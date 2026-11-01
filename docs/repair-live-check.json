@@ -1,0 +1,49 @@
+{
+  "status": "failed",
+  "model": "ollama_chat/llama3.2:3b",
+  "message": "Travel workflow stopped: Missing upstream results: flight_search, selected_flight",
+  "trace": [
+    {
+      "agent": "hotel_agent",
+      "event": "tool_call",
+      "tool": "search_hotels",
+      "details": "{'destination': 'New York City', 'check_in': '2026-12-15', 'check_out': '2026-12-19', 'rooms': 1, 'global_mode': True, 'hotel_allowance_usd': None}",
+      "argument_source": "model proposal; callback may ground values"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_result",
+      "tool": "search_hotels",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'live_availability_checked': False, 'bookable': False, 'city': 'New York City', 'check_in': '2026-12-15', 'check_out': '2026-12-19', 'nights': 4, 'rooms': 1, 'options': [{'id': 'DEMO-H001', 'city': 'New York City', 'name': 'Demo Midtown Stay', 'nightly_usd_per_room': 160.0, 'category': 'budget', 'total_room_cost_usd': 640.0}, {'id': 'DEMO-H002', 'city': 'New York City', 'name': 'Demo Parkside Suites', 'nightly_usd_per_room': 230.0, 'category': 'midrange', 'total_room_cost_usd': 920.0}], 'note': 'Fictional lodging options. Taxes, fees, and availabili"
+    },
+    {
+      "agent": "itinerary_agent",
+      "event": "tool_call",
+      "tool": "suggest_activities",
+      "details": "{'interests': 'culture,food,outdoors,entertainment', 'free_only': 'false', 'avoid_popular_spots': 'false', 'candidate_data_json': 'null', 'selected_attraction_ids': 'null', 'pace': 'Balanced', 'destination': 'New York City', 'days': '4'}",
+      "argument_source": "model proposal; callback may ground values"
+    },
+    {
+      "agent": "itinerary_agent",
+      "event": "tool_result",
+      "tool": "suggest_activities",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'destination': 'New York City', 'free_only': False, 'interests_used': 'culture,food', 'avoid_popular_spots': False, 'itinerary': [{'day': 1, 'activity': {'name': 'Museum of Modern Art visit', 'interest': 'culture', 'estimated_usd_per_person': 30.0, 'latitude': 40.7614, 'longitude': -73.9776}}, {'day': 2, 'activity': {'name': 'Lower East Side historic neighborhood', 'interest': 'culture', 'estimated_usd_per_person': 0.0, 'latitude': 40.715, 'longitude': -73.989}}, {'day': 3, 'activity': {'name': 'Chelsea Market food exploration', 'interest': 'food', "
+    },
+    {
+      "agent": "travel_coordinator",
+      "event": "final_response",
+      "tool": "—",
+      "details": "Missing upstream results: flight_search, selected_flight"
+    }
+  ],
+  "timings": {
+    "flight_agent": 48.36,
+    "hotel_agent": 33,
+    "itinerary_agent": 42.27,
+    "budget_agent": 0,
+    "travel_coordinator": 0
+  },
+  "model_metrics": [],
+  "tool_metrics": [],
+  "total_seconds": null
+}

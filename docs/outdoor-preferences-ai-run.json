@@ -1,0 +1,597 @@
+{
+  "answer": "Based on the provided data, here is a concise travel plan:\n\n**Selected Flight ID:** DEMO-F002\n**Selected Hotel ID:** DEMO-H002\n**Trip Dates:** November 15, 2026 - November 19, 2026\n**Travelers:** 2\n**Original Total:** $2130.00\n**Final Total:** $2000.00\n**Savings:** $130.00\n**Remaining Budget:** $0.00\n**Within Budget:** True\n\nHere are the daily activities:\n\n1. Central Park walk\n2. Brooklyn Bridge Park waterfront\n3. Central Park walk\n4. Brooklyn Bridge Park waterfront\n5. Central Park walk\n\nThe activities match the traveler's preferences for \"Active outdoor walks and sightseeing\".\n\n\nLodging stay: 4 nights.\nPython budget comparison: original DEMO-F001 / DEMO-H002 $2,130.00; revised DEMO-F002 / DEMO-H002 $2,000.00; activities per person $0.00 to $0.00; saved $130.00; within budget. Changed flight using returned specialist options.\nDEMO DATA: Flight and hotel offers and prices are simulated, not live or bookable.",
+  "trace": [
+    {
+      "agent": "flight_agent",
+      "event": "tool_call",
+      "tool": "search_flights",
+      "details": "{'departure_date': '2026-11-15', 'rooms': 1, 'interests': 'outdoors', 'preferences': 'Active outdoor walks and sightseeing', 'food_per_person_per_day_usd': 45, 'origin': 'Chicago', 'return_date': '2026-11-19', 'travelers': 2, 'budget_limit_usd': 2000, 'transport_per_day_usd': 20, 'destination': 'New York City'}"
+    },
+    {
+      "agent": "flight_agent",
+      "event": "tool_result",
+      "tool": "search_flights",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'live_availability_checked': False, 'bookable': False, 'departure_date': '2026-11-15', 'return_date': '2026-11-19', 'travelers': 2, 'options': [{'id': 'DEMO-F001', 'origin': 'ORD', 'destination': 'JFK', 'airline': 'Demo Air A', 'stops': 0, 'round_trip_usd_per_person': 330.0, 'total_round_trip_usd': 660.0}, {'id': 'DEMO-F002', 'origin': 'ORD', 'destination': 'JFK', 'airline': 'Demo Air B', 'stops': 1, 'round_trip_usd_per_person': 265.0, 'total_round_trip_usd': 530.0}], 'note': 'These are fictional examples, NOT current flights, prices, or inventory.'"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_call",
+      "tool": "search_hotels",
+      "details": "{'food_per_person_per_day_usd': '45.0', 'transport_per_day_usd': '20.0', 'destination': 'New York City', 'check_in': '2026-11-15', 'check_out': '2026-11-19', 'rooms': '1', 'budget_limit_usd': '2000.0', 'preferences': 'Active outdoor walks and sightseeing', 'interests': 'outdoors'}"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_result",
+      "tool": "search_hotels",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'live_availability_checked': False, 'bookable': False, 'city': 'New York City', 'check_in': '2026-11-15', 'check_out': '2026-11-19', 'nights': 4, 'rooms': 1, 'options': [{'id': 'DEMO-H001', 'city': 'New York City', 'name': 'Demo Midtown Stay', 'nightly_usd_per_room': 160.0, 'category': 'budget', 'total_room_cost_usd': 640.0}, {'id': 'DEMO-H002', 'city': 'New York City', 'name': 'Demo Parkside Suites', 'nightly_usd_per_room': 230.0, 'category': 'midrange', 'total_room_cost_usd': 920.0}], 'note': 'Fictional lodging options. Taxes, fees, and availabili"
+    },
+    {
+      "agent": "itinerary_agent",
+      "event": "tool_call",
+      "tool": "suggest_activities",
+      "details": "{'destination': 'New York City', 'days': '1', 'interests': 'outdoors,entertainment,culture', 'free_only': 'false', 'avoid_popular_spots': 'false'}"
+    },
+    {
+      "agent": "itinerary_agent",
+      "event": "tool_result",
+      "tool": "suggest_activities",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'destination': 'New York City', 'free_only': False, 'interests_used': 'outdoors', 'avoid_popular_spots': False, 'itinerary': [{'day': 1, 'activity': {'name': 'Central Park walk', 'interest': 'outdoors', 'estimated_usd_per_person': 0.0, 'latitude': 40.7829, 'longitude': -73.9654}}, {'day': 2, 'activity': {'name': 'Brooklyn Bridge Park waterfront', 'interest': 'outdoors', 'estimated_usd_per_person': 0.0, 'latitude': 40.7003, 'longitude': -73.9967}}, {'day': 3, 'activity': {'name': 'Central Park walk', 'interest': 'outdoors', 'estimated_usd_per_person'"
+    },
+    {
+      "agent": "budget_agent",
+      "event": "tool_call",
+      "tool": "estimate_budget",
+      "details": "{'flight_option_id': 'DEMO-F001', 'hotel_option_id': 'DEMO-H002', 'nights': 4, 'travelers': 2, 'rooms': 1, 'food_per_person_per_day_usd': 45.0, 'transport_per_day_usd': 20.0, 'activities_per_person_usd': 0.0, 'budget_limit_usd': 2000.0}"
+    },
+    {
+      "agent": "budget_agent",
+      "event": "tool_result",
+      "tool": "estimate_budget",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'currency': 'USD', 'flight_option_id': 'DEMO-F001', 'hotel_option_id': 'DEMO-H002', 'nights': 4, 'days': 5, 'travelers': 2, 'rooms': 1, 'breakdown': {'round_trip_flights_usd': 660.0, 'hotel_room_total_usd': 920.0, 'food_usd': 450.0, 'ground_transport_usd': 100.0, 'activities_usd': 0.0}, 'estimated_total_usd': 2130.0, 'budget_limit_usd': 2000.0, 'remaining_usd': -130.0, 'within_budget': False, 'excluded': ['Taxes and resort fees', 'Baggage and seat selection', 'Travel insurance', 'Visa costs', 'Price volatility'], 'note': 'This is sample planning ari"
+    },
+    {
+      "agent": "budget_agent",
+      "event": "tool_call",
+      "tool": "estimate_budget",
+      "details": "{'flight_option_id': 'DEMO-F002', 'hotel_option_id': 'DEMO-H002', 'nights': 4, 'travelers': 2, 'rooms': 1, 'food_per_person_per_day_usd': 45.0, 'transport_per_day_usd': 20.0, 'activities_per_person_usd': 0.0, 'budget_limit_usd': 2000.0}"
+    },
+    {
+      "agent": "budget_agent",
+      "event": "tool_result",
+      "tool": "estimate_budget",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'currency': 'USD', 'flight_option_id': 'DEMO-F002', 'hotel_option_id': 'DEMO-H002', 'nights': 4, 'days': 5, 'travelers': 2, 'rooms': 1, 'breakdown': {'round_trip_flights_usd': 530.0, 'hotel_room_total_usd': 920.0, 'food_usd': 450.0, 'ground_transport_usd': 100.0, 'activities_usd': 0.0}, 'estimated_total_usd': 2000.0, 'budget_limit_usd': 2000.0, 'remaining_usd': 0.0, 'within_budget': True, 'excluded': ['Taxes and resort fees', 'Baggage and seat selection', 'Travel insurance', 'Visa costs', 'Price volatility'], 'note': 'This is sample planning arithme"
+    },
+    {
+      "agent": "travel_coordinator",
+      "event": "final_response",
+      "tool": "—",
+      "details": "Based on the provided data, here is a concise travel plan:\n\n**Selected Flight ID:** DEMO-F002\n**Selected Hotel ID:** DEMO-H002\n**Trip Dates:** November 15, 2026 - November 19, 2026\n**Travelers:** 2\n**Original Total:** $2130.00\n**Final Total:** $2000.00\n**Savings:** $130.00\n**Remaining Budget:** $0.00\n**Within Budget:** True\n\nHere are the daily activities:\n\n1. Central Park walk\n2. Brooklyn Bridge Park waterfront\n3. Central Park walk\n4. Brooklyn Bridge Park waterfront\n5. Central Park walk\n\nThe activities match the traveler's preferences for \"Active outdoor walks and sightseeing\".\n\n\nLodging stay:"
+    }
+  ],
+  "structured_plan": {
+    "request": {
+      "departure_date": "2026-11-15",
+      "return_date": "2026-11-19",
+      "origin": "Chicago",
+      "destination": "New York City",
+      "travelers": 2,
+      "rooms": 1,
+      "budget_limit_usd": 2000,
+      "interests": "outdoors",
+      "preferences": "Active outdoor walks and sightseeing",
+      "food_per_person_per_day_usd": 45,
+      "transport_per_day_usd": 20
+    },
+    "flight": {
+      "id": "DEMO-F002",
+      "origin": "ORD",
+      "destination": "JFK",
+      "airline": "Demo Air B",
+      "stops": 1,
+      "round_trip_usd_per_person": 265,
+      "total_round_trip_usd": 530
+    },
+    "hotel": {
+      "id": "DEMO-H002",
+      "city": "New York City",
+      "name": "Demo Parkside Suites",
+      "nightly_usd_per_room": 230,
+      "category": "midrange",
+      "total_room_cost_usd": 920
+    },
+    "itinerary": [
+      {
+        "day": 1,
+        "activity": {
+          "name": "Central Park walk",
+          "interest": "outdoors",
+          "estimated_usd_per_person": 0,
+          "latitude": 40.7829,
+          "longitude": -73.9654
+        }
+      },
+      {
+        "day": 2,
+        "activity": {
+          "name": "Brooklyn Bridge Park waterfront",
+          "interest": "outdoors",
+          "estimated_usd_per_person": 0,
+          "latitude": 40.7003,
+          "longitude": -73.9967
+        }
+      },
+      {
+        "day": 3,
+        "activity": {
+          "name": "Central Park walk",
+          "interest": "outdoors",
+          "estimated_usd_per_person": 0,
+          "latitude": 40.7829,
+          "longitude": -73.9654
+        }
+      },
+      {
+        "day": 4,
+        "activity": {
+          "name": "Brooklyn Bridge Park waterfront",
+          "interest": "outdoors",
+          "estimated_usd_per_person": 0,
+          "latitude": 40.7003,
+          "longitude": -73.9967
+        }
+      },
+      {
+        "day": 5,
+        "activity": {
+          "name": "Central Park walk",
+          "interest": "outdoors",
+          "estimated_usd_per_person": 0,
+          "latitude": 40.7829,
+          "longitude": -73.9654
+        }
+      }
+    ],
+    "budget": {
+      "status": "ok",
+      "source": "SYNTHETIC_DEMO",
+      "currency": "USD",
+      "flight_option_id": "DEMO-F002",
+      "hotel_option_id": "DEMO-H002",
+      "nights": 4,
+      "days": 5,
+      "travelers": 2,
+      "rooms": 1,
+      "breakdown": {
+        "round_trip_flights_usd": 530,
+        "hotel_room_total_usd": 920,
+        "food_usd": 450,
+        "ground_transport_usd": 100,
+        "activities_usd": 0
+      },
+      "estimated_total_usd": 2000,
+      "budget_limit_usd": 2000,
+      "remaining_usd": 0,
+      "within_budget": true,
+      "excluded": [
+        "Taxes and resort fees",
+        "Baggage and seat selection",
+        "Travel insurance",
+        "Visa costs",
+        "Price volatility"
+      ],
+      "note": "This is sample planning arithmetic, not a quote or booking offer."
+    },
+    "original_plan": {
+      "flight": {
+        "id": "DEMO-F001",
+        "origin": "ORD",
+        "destination": "JFK",
+        "airline": "Demo Air A",
+        "stops": 0,
+        "round_trip_usd_per_person": 330,
+        "total_round_trip_usd": 660
+      },
+      "hotel": {
+        "id": "DEMO-H002",
+        "city": "New York City",
+        "name": "Demo Parkside Suites",
+        "nightly_usd_per_room": 230,
+        "category": "midrange",
+        "total_room_cost_usd": 920
+      },
+      "itinerary": {
+        "status": "ok",
+        "source": "SYNTHETIC_DEMO",
+        "destination": "New York City",
+        "free_only": false,
+        "interests_used": "outdoors",
+        "avoid_popular_spots": false,
+        "itinerary": [
+          {
+            "day": 1,
+            "activity": {
+              "name": "Central Park walk",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7829,
+              "longitude": -73.9654
+            }
+          },
+          {
+            "day": 2,
+            "activity": {
+              "name": "Brooklyn Bridge Park waterfront",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7003,
+              "longitude": -73.9967
+            }
+          },
+          {
+            "day": 3,
+            "activity": {
+              "name": "Central Park walk",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7829,
+              "longitude": -73.9654
+            }
+          },
+          {
+            "day": 4,
+            "activity": {
+              "name": "Brooklyn Bridge Park waterfront",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7003,
+              "longitude": -73.9967
+            }
+          },
+          {
+            "day": 5,
+            "activity": {
+              "name": "Central Park walk",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7829,
+              "longitude": -73.9654
+            }
+          }
+        ],
+        "estimated_activities_usd_per_person": 0,
+        "note": "Check real-world opening hours, ticket prices, transit times, and accessibility before traveling."
+      },
+      "budget": {
+        "status": "ok",
+        "source": "SYNTHETIC_DEMO",
+        "currency": "USD",
+        "flight_option_id": "DEMO-F001",
+        "hotel_option_id": "DEMO-H002",
+        "nights": 4,
+        "days": 5,
+        "travelers": 2,
+        "rooms": 1,
+        "breakdown": {
+          "round_trip_flights_usd": 660,
+          "hotel_room_total_usd": 920,
+          "food_usd": 450,
+          "ground_transport_usd": 100,
+          "activities_usd": 0
+        },
+        "estimated_total_usd": 2130,
+        "budget_limit_usd": 2000,
+        "remaining_usd": -130,
+        "within_budget": false,
+        "excluded": [
+          "Taxes and resort fees",
+          "Baggage and seat selection",
+          "Travel insurance",
+          "Visa costs",
+          "Price volatility"
+        ],
+        "note": "This is sample planning arithmetic, not a quote or booking offer."
+      },
+      "budget_difference_usd": -130
+    },
+    "revised_plan": {
+      "flight": {
+        "id": "DEMO-F002",
+        "origin": "ORD",
+        "destination": "JFK",
+        "airline": "Demo Air B",
+        "stops": 1,
+        "round_trip_usd_per_person": 265,
+        "total_round_trip_usd": 530
+      },
+      "hotel": {
+        "id": "DEMO-H002",
+        "city": "New York City",
+        "name": "Demo Parkside Suites",
+        "nightly_usd_per_room": 230,
+        "category": "midrange",
+        "total_room_cost_usd": 920
+      },
+      "itinerary": {
+        "status": "ok",
+        "source": "SYNTHETIC_DEMO",
+        "destination": "New York City",
+        "free_only": false,
+        "interests_used": "outdoors",
+        "avoid_popular_spots": false,
+        "itinerary": [
+          {
+            "day": 1,
+            "activity": {
+              "name": "Central Park walk",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7829,
+              "longitude": -73.9654
+            }
+          },
+          {
+            "day": 2,
+            "activity": {
+              "name": "Brooklyn Bridge Park waterfront",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7003,
+              "longitude": -73.9967
+            }
+          },
+          {
+            "day": 3,
+            "activity": {
+              "name": "Central Park walk",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7829,
+              "longitude": -73.9654
+            }
+          },
+          {
+            "day": 4,
+            "activity": {
+              "name": "Brooklyn Bridge Park waterfront",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7003,
+              "longitude": -73.9967
+            }
+          },
+          {
+            "day": 5,
+            "activity": {
+              "name": "Central Park walk",
+              "interest": "outdoors",
+              "estimated_usd_per_person": 0,
+              "latitude": 40.7829,
+              "longitude": -73.9654
+            }
+          }
+        ],
+        "estimated_activities_usd_per_person": 0,
+        "note": "Check real-world opening hours, ticket prices, transit times, and accessibility before traveling."
+      },
+      "budget": {
+        "status": "ok",
+        "source": "SYNTHETIC_DEMO",
+        "currency": "USD",
+        "flight_option_id": "DEMO-F002",
+        "hotel_option_id": "DEMO-H002",
+        "nights": 4,
+        "days": 5,
+        "travelers": 2,
+        "rooms": 1,
+        "breakdown": {
+          "round_trip_flights_usd": 530,
+          "hotel_room_total_usd": 920,
+          "food_usd": 450,
+          "ground_transport_usd": 100,
+          "activities_usd": 0
+        },
+        "estimated_total_usd": 2000,
+        "budget_limit_usd": 2000,
+        "remaining_usd": 0,
+        "within_budget": true,
+        "excluded": [
+          "Taxes and resort fees",
+          "Baggage and seat selection",
+          "Travel insurance",
+          "Visa costs",
+          "Price volatility"
+        ],
+        "note": "This is sample planning arithmetic, not a quote or booking offer."
+      },
+      "budget_difference_usd": 0
+    },
+    "replanning": {
+      "triggered": true,
+      "outcome": "replanned_within_budget",
+      "evaluated_alternatives": 8,
+      "source_results": [
+        "flight_search",
+        "hotel_search",
+        "itinerary_result",
+        "free_itinerary_result"
+      ],
+      "initial_total_usd": 2130,
+      "revised_total_usd": 2000,
+      "amount_saved_usd": 130,
+      "final_within_budget": true,
+      "explanation": "Changed flight using returned specialist options."
+    },
+    "source": "SYNTHETIC_DEMO"
+  },
+  "available_flights": [
+    {
+      "id": "DEMO-F001",
+      "origin": "ORD",
+      "destination": "JFK",
+      "airline": "Demo Air A",
+      "stops": 0,
+      "round_trip_usd_per_person": 330,
+      "total_round_trip_usd": 660
+    },
+    {
+      "id": "DEMO-F002",
+      "origin": "ORD",
+      "destination": "JFK",
+      "airline": "Demo Air B",
+      "stops": 1,
+      "round_trip_usd_per_person": 265,
+      "total_round_trip_usd": 530
+    }
+  ],
+  "available_hotels": [
+    {
+      "id": "DEMO-H001",
+      "city": "New York City",
+      "name": "Demo Midtown Stay",
+      "nightly_usd_per_room": 160,
+      "category": "budget",
+      "total_room_cost_usd": 640
+    },
+    {
+      "id": "DEMO-H002",
+      "city": "New York City",
+      "name": "Demo Parkside Suites",
+      "nightly_usd_per_room": 230,
+      "category": "midrange",
+      "total_room_cost_usd": 920
+    }
+  ],
+  "timings": {
+    "flight_agent": 33.84,
+    "hotel_agent": 30.61,
+    "itinerary_agent": 32.95,
+    "budget_agent": 0,
+    "travel_coordinator": 52.36
+  },
+  "agent_summary": [
+    {
+      "agent": "flight_agent",
+      "tool_calls": "search_flights",
+      "tool_results": "search_flights",
+      "elapsed_seconds": 33.84,
+      "observed": true,
+      "status": "tool result observed",
+      "selected_result": "DEMO-F002"
+    },
+    {
+      "agent": "hotel_agent",
+      "tool_calls": "search_hotels",
+      "tool_results": "search_hotels",
+      "elapsed_seconds": 30.61,
+      "observed": true,
+      "status": "tool result observed",
+      "selected_result": "DEMO-H002"
+    },
+    {
+      "agent": "itinerary_agent",
+      "tool_calls": "suggest_activities",
+      "tool_results": "suggest_activities",
+      "elapsed_seconds": 32.95,
+      "observed": true,
+      "status": "tool result observed",
+      "selected_result": "5 activity days"
+    },
+    {
+      "agent": "budget_agent",
+      "tool_calls": "estimate_budget, estimate_budget",
+      "tool_results": "estimate_budget, estimate_budget",
+      "elapsed_seconds": 0,
+      "observed": true,
+      "status": "tool result observed",
+      "selected_result": "$2,000.00 final total"
+    },
+    {
+      "agent": "travel_coordinator",
+      "tool_calls": "—",
+      "tool_results": "—",
+      "elapsed_seconds": 52.36,
+      "observed": true,
+      "status": "final response observed",
+      "selected_result": "final plan"
+    }
+  ],
+  "model_metrics": [
+    {
+      "agent": "flight_agent",
+      "request_number": 1,
+      "prompt_contents": 1,
+      "content_text_chars": 297,
+      "request_json_chars": 2025,
+      "duration_seconds": 33.78,
+      "status": "completed"
+    },
+    {
+      "agent": "hotel_agent",
+      "request_number": 1,
+      "prompt_contents": 1,
+      "content_text_chars": 1128,
+      "request_json_chars": 2663,
+      "duration_seconds": 30.61,
+      "status": "completed"
+    },
+    {
+      "agent": "itinerary_agent",
+      "request_number": 1,
+      "prompt_contents": 1,
+      "content_text_chars": 1143,
+      "request_json_chars": 3159,
+      "duration_seconds": 32.95,
+      "status": "completed"
+    },
+    {
+      "agent": "travel_coordinator",
+      "request_number": 1,
+      "prompt_contents": 1,
+      "content_text_chars": 1164,
+      "request_json_chars": 3379,
+      "duration_seconds": 52.36,
+      "status": "completed"
+    }
+  ],
+  "tool_metrics": [
+    {
+      "tool": "search_flights",
+      "status": "ok",
+      "duration_seconds": 0.0002
+    },
+    {
+      "tool": "search_hotels",
+      "status": "ok",
+      "duration_seconds": 0.0005
+    },
+    {
+      "tool": "suggest_activities",
+      "status": "ok",
+      "duration_seconds": 0.0003
+    },
+    {
+      "tool": "estimate_budget",
+      "status": "ok",
+      "duration_seconds": 0.0001,
+      "calls": 1,
+      "source": "initial_budget"
+    },
+    {
+      "tool": "estimate_budget",
+      "status": "ok",
+      "duration_seconds": 0.0003,
+      "calls": 8,
+      "source": "optimization_pass"
+    },
+    {
+      "tool": "estimate_budget",
+      "status": "ok",
+      "duration_seconds": 0.0001,
+      "calls": 1,
+      "source": "revised_budget"
+    }
+  ],
+  "total_seconds": 150.32,
+  "model": "ollama_chat/llama3.2:3b",
+  "execution_mode": "GOOGLE_ADK_SEQUENTIAL_AGENTS"
+}

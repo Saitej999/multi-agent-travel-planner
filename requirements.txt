@@ -1,0 +1,9 @@
+# Full local ADK + Ollama environment (the existing Streamlit demo is optional).
+# Python 3.11+; Ollama and its model are installed separately on your machine.
+pydantic>=2.8,<3.0
+python-dotenv>=1.0,<2.0
+google-adk>=2.0,<3.0
+# Pin a tested release: newer LiteLLM 1.106.x fails on its MCP import path.
+litellm==1.84.0
+streamlit>=1.40,<2.0
+pytest>=8,<10
