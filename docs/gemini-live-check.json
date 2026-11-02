@@ -1,0 +1,66 @@
+{
+  "status": "failed",
+  "model": "gemini-3.8-flash",
+  "message": "Local AI run stopped: ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+  "trace": [
+    {
+      "agent": "flight_agent",
+      "event": "tool_call",
+      "tool": "search_flights",
+      "details": "{'origin': 'Chicago', 'destination': 'New York City', 'departure_date': '2026-12-15', 'return_date': '2026-12-19', 'travelers': 2}",
+      "argument_source": "deterministic Python stage"
+    },
+    {
+      "agent": "flight_agent",
+      "event": "tool_result",
+      "tool": "search_flights",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'live_availability_checked': False, 'bookable': False, 'departure_date': '2026-12-15', 'return_date': '2026-12-19', 'travelers': 2, 'options': [{'id': 'DEMO-F001', 'origin': 'ORD', 'destination': 'JFK', 'airline': 'Demo Air A', 'stops': 0, 'round_trip_usd_per_person': 330.0, 'total_round_trip_usd': 660.0}, {'id': 'DEMO-F002', 'origin': 'ORD', 'destination': 'JFK', 'airline': 'Demo Air B', 'stops': 1, 'round_trip_usd_per_person': 265.0, 'total_round_trip_usd': 530.0}], 'note': 'These are fictional examples, NOT current flights, prices, or inventory.'"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_call",
+      "tool": "search_hotels",
+      "details": "{'destination': 'New York City', 'check_in': '2026-12-15', 'check_out': '2026-12-19', 'rooms': 1}",
+      "argument_source": "deterministic Python stage"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_result",
+      "tool": "search_hotels",
+      "details": "{'status': 'ok', 'source': 'SYNTHETIC_DEMO', 'live_availability_checked': False, 'bookable': False, 'city': 'New York City', 'check_in': '2026-12-15', 'check_out': '2026-12-19', 'nights': 4, 'rooms': 1, 'options': [{'id': 'DEMO-H001', 'city': 'New York City', 'name': 'Demo Midtown Stay', 'nightly_usd_per_room': 160.0, 'category': 'budget', 'total_room_cost_usd': 640.0}, {'id': 'DEMO-H002', 'city': 'New York City', 'name': 'Demo Parkside Suites', 'nightly_usd_per_room': 230.0, 'category': 'midrange', 'total_room_cost_usd': 920.0}], 'note': 'Fictional lodging options. Taxes, fees, and availabili"
+    }
+  ],
+  "timings": {
+    "flight_agent": 0.71,
+    "hotel_agent": 1.45
+  },
+  "model_metrics": [],
+  "tool_metrics": [
+    {
+      "tool": "search_flights",
+      "status": "ok",
+      "duration_seconds": 0.0008,
+      "used_arguments": {
+        "origin": "Chicago",
+        "destination": "New York City",
+        "departure_date": "2026-12-15",
+        "return_date": "2026-12-19",
+        "travelers": 2
+      },
+      "source": "deterministic_adk_agent"
+    },
+    {
+      "tool": "search_hotels",
+      "status": "ok",
+      "duration_seconds": 0.0002,
+      "used_arguments": {
+        "destination": "New York City",
+        "check_in": "2026-12-15",
+        "check_out": "2026-12-19",
+        "rooms": 1
+      },
+      "source": "deterministic_adk_agent"
+    }
+  ],
+  "total_seconds": 2.17
+}

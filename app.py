@@ -41,7 +41,7 @@ def display_plan(result: dict, kind: str) -> dict:
 with st.sidebar:
     st.markdown('### Your planning space')
     mode = st.radio('Planning mode', ['AI Travel Planner', 'Offline Demo'],
-                    help='AI uses the local five-agent ADK workflow. Demo is deterministic Python.')
+                    help='AI uses the five-agent ADK workflow with Gemini. Demo is deterministic Python.')
     diagnostics = st.toggle('Developer diagnostics', value=False)
     st.caption('Local learning project · No bookings or live travel prices')
 
@@ -149,7 +149,7 @@ if submit:
             if mode == 'Offline Demo':
                 st.session_state['execution'] = ('offline', plan_trip(request))
             else:
-                status = st.status('Planning with local AI agents…', expanded=True)
+                status = st.status('Planning with AI agents…', expanded=True)
                 with status:
                     progress = st.empty()
                     progress_errors = []
@@ -173,7 +173,7 @@ if submit:
                         result = asyncio.run(run_adk_trip(request, **runner_args))
                     except Exception as exc:
                         if isinstance(exc, TimeoutError) or 'exceeded 180 seconds' in str(exc):
-                            user_message = 'The local AI planner took too long. Try again or use Offline Demo.'
+                            user_message = 'The AI planner took too long. Try again or use Offline Demo.'
                         elif isinstance(exc, TypeError):
                             user_message = 'The AI planner could not start. Restart Streamlit and try again.'
                         else:
@@ -213,7 +213,7 @@ if plan['status'] != 'ok':
         st.json(plan)
     st.stop()
 
-st.caption('AI Agent Mode: observed ADK workflow with local Ollama.' if kind == 'adk'
+st.caption('AI Agent Mode: observed ADK workflow with Gemini.' if kind == 'adk'
            else 'Offline Demo: deterministic Python demonstration; no LLM agents ran.')
 render_overview(plan['request'], plan['budget'])
 render_budget(plan)

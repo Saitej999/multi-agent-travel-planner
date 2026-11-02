@@ -226,8 +226,16 @@ class BudgetAgent(BaseAgent):
                 raise ValueError('Global flight and hotel availability state is missing')
             itinerary = state['itinerary_result']
             days = (request.return_date - request.departure_date).days + 1
-            if itinerary['status'] != 'ok' or len(itinerary['itinerary']) != days:
-                raise ValueError('Verified attraction itinerary does not match trip dates')
+            if itinerary['status'] not in {'ok', 'partial', 'insufficient_data'} or len(itinerary['itinerary']) != days:
+                raise ValueError('Attraction itinerary does not match trip dates')
+            from travel_core.global_planner import validate_global_itinerary
+            quality = validate_global_itinerary(
+                itinerary, candidates=state.get('attraction_candidates') or [],
+                destination=request.destination, departure_date=request.departure_date,
+                days=days, destination_latitude=request.destination_location.latitude,
+                destination_longitude=request.destination_location.longitude)
+            if quality['status'] == 'invalid_result':
+                raise ValueError('Attraction itinerary failed validation: ' + ', '.join(quality['issues']))
             kwargs = {'days': days, 'nights': days - 1, 'travelers': request.travelers,
                       'rooms': request.rooms,
                       'food_per_person_per_day_usd': request.food_per_person_per_day_usd,
@@ -249,18 +257,26 @@ class BudgetAgent(BaseAgent):
         metrics = list(state.get('tool_metrics') or [])
         metrics.append({'tool': 'partial_budget', 'status': 'partial', 'calls': 1,
                         'duration_seconds': round(perf_counter() - started, 4)})
+        discovery = state.get('attraction_discovery') or {}
         plan = {'request': state['trip_request'], 'flight': None, 'hotel': None,
                 'itinerary': itinerary['itinerary'], 'budget': budget,
+                'attraction_status': quality['status'],
+                'quality_issues': quality['issues'],
+                'attraction_sources': discovery.get('sources') or [],
+                'attraction_warnings': discovery.get('warnings') or [],
                 'original_plan': None, 'revised_plan': None,
                 'replanning': {'triggered': False, 'outcome': 'no_verified_price_alternatives'},
-                'source': 'OPENSTREETMAP_OVERPASS'}
+                'source': itinerary['source']}
         brief = {'mode': 'global', 'trip': {key: state['trip_request'][key] for key in (
             'origin', 'destination', 'departure_date', 'return_date', 'travelers',
             'rooms', 'budget_limit_usd', 'interests', 'preferences', 'travel_pace')},
                  'days': [{'day': item['day'], 'places': [slot['title'] for slot in item['slots']
                            if slot['verified_place']]} for item in itinerary['itinerary']],
                  'budget': budget, 'flight_pricing': state['flight_search']['price_status'],
-                 'hotel_pricing': state['hotel_search']['price_status']}
+                 'hotel_pricing': state['hotel_search']['price_status'],
+                 'attraction_status': quality['status'],
+                 'quality_issues': quality['issues'],
+                 'attraction_warnings': discovery.get('warnings') or []}
         yield Event(invocation_id=ctx.invocation_id, author=self.name,
                     content=types.Content(role='user', parts=[types.Part.from_function_response(
                         name='partial_budget', response=budget)]),

@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root { font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; color: #193349; background: #f8faf9; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+h1, h2, h3, h4 { font-family: "Manrope", "DM Sans", sans-serif; }
+button, input, select, textarea { font: inherit; }
+summary::-webkit-details-marker { display: none; }
+.hero-grid { background: radial-gradient(circle at 50% 0%, #206578 0%, #103c53 47%, #0e2e46 100%); }
+.section-wrap { width: min(100% - 2.5rem, 80rem); margin-inline: auto; padding-top: 4.5rem; }
+.eyebrow { margin-bottom: .6rem; color: #0b777c; font-size: .7rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.form-label { display: block; margin-bottom: .5rem; color: #314455; font-size: .82rem; font-weight: 700; }
+.field { display: block; width: 100%; min-width: 0; min-height: 46px; border: 1px solid #dbe5e8; border-radius: 12px; background: #fff; padding: 0 13px; color: #172c40; outline: none; transition: border-color .18s, box-shadow .18s; }
+.field-with-icon { padding-left: 44px; }
+.field:focus { border-color: #13868c; box-shadow: 0 0 0 3px rgba(19,134,140,.12); }
+.field::placeholder { color: #94a3b8; }
+.field-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #71879a; pointer-events: none; }
+.interest-chip { border: 1px solid #dbe5e8; border-radius: 999px; background: white; padding: 7px 14px; color: #53687a; font-size: .78rem; font-weight: 700; transition: all .18s; }
+.interest-chip:hover { border-color: #0c7f81; color: #0c7f81; }
+.interest-chip-active { border-color: #0c7f81; background: #e8f7f4; color: #076b70; }
+.icon-tile { display: inline-flex; height: 44px; width: 44px; align-items: center; justify-content: center; border-radius: 13px; background: #e8f7f4; color: #0b777c; }
+@media (min-width: 640px) { .section-wrap { width: min(100% - 4rem, 80rem); } }

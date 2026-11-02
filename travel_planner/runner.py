@@ -71,19 +71,26 @@ async def run_adk_trip(request: TripRequest, timeout_seconds: float = 180,
     from travel_planner.agent import root_agent
 
     candidates = []
+    discovery_status = 'not_applicable'
+    discovery_sources = []
+    discovery_warnings = []
+    discovery_diagnostics = []
     if request.global_mode:
-        from travel_core.geo import GeographicDataError, discover_attractions
+        from travel_core.geo import find_attractions
 
         if not request.destination_location or not request.origin_location:
             raise WorkflowRunError('Choose verified origin and destination cities first.', [], {})
-        try:
-            candidates = [item.model_dump() for item in discover_attractions(request.destination_location)]
-        except GeographicDataError as exc:
-            raise WorkflowRunError(str(exc), [], {}) from exc
-        if not candidates:
-            raise WorkflowRunError('No verified attractions were found near that destination.', [], {})
+        days = (request.return_date - request.departure_date).days + 1
+        desired_places = 2 + max(0, days - 2) * (3 if request.travel_pace == 'Adventurous' else 2)
+        discovery = await asyncio.to_thread(find_attractions, request.destination_location,
+                                            desired_places)
+        candidates = [item.model_dump() for item in discovery.attractions]
+        discovery_status = discovery.status
+        discovery_sources = discovery.sources
+        discovery_warnings = discovery.warnings
+        discovery_diagnostics = discovery.diagnostics or []
         if on_progress:
-            on_progress({'agent': 'itinerary_agent', 'event': 'attractions_found',
+            on_progress({'agent': 'itinerary_agent', 'event': 'attractions_found' if candidates else 'attractions_unavailable',
                          'count': len(candidates)})
 
     app_name = 'travel_planner'
@@ -92,7 +99,11 @@ async def run_adk_trip(request: TripRequest, timeout_seconds: float = 180,
     sessions = InMemorySessionService()
     await sessions.create_session(app_name=app_name, user_id=user_id, session_id=session_id,
                                   state={'trip_request': request.model_dump(mode='json'),
-                                         'attraction_candidates': candidates})
+                                         'attraction_candidates': candidates,
+                                         'attraction_discovery': {'status': discovery_status,
+                                                                  'sources': discovery_sources,
+                                                                  'warnings': discovery_warnings,
+                                                                  'diagnostics': discovery_diagnostics}})
     runner = Runner(agent=root_agent, app_name=app_name, session_service=sessions)
     content = types.Content(role='user', parts=[types.Part(text=make_prompt(request))])
     trace = []
@@ -120,9 +131,11 @@ async def run_adk_trip(request: TripRequest, timeout_seconds: float = 180,
                     stage_started = last_event_at
                 last_event_at = now
                 for call in event.get_function_calls():
+                    deterministic = event.author in {'flight_agent', 'hotel_agent', 'budget_agent'}
                     trace.append({'agent': event.author, 'event': 'tool_call', 'tool': call.name,
                                   'details': str(call.args)[:600],
-                                  'argument_source': 'model proposal; callback may ground values'})
+                                  'argument_source': ('deterministic Python stage' if deterministic
+                                                      else 'Gemini proposal; callback grounds trip facts')})
                 for result in event.get_function_responses():
                     trace.append({'agent': event.author, 'event': 'tool_result', 'tool': result.name,
                                   'details': str(result.response)[:600]})
@@ -200,6 +213,10 @@ async def run_adk_trip(request: TripRequest, timeout_seconds: float = 180,
             'available_flights': (state.get('flight_search') or {}).get('options', []),
             'available_hotels': (state.get('hotel_search') or {}).get('options', []),
             'attractions': candidates,
+            'attraction_discovery': {'status': discovery_status,
+                                     'sources': discovery_sources,
+                                     'warnings': discovery_warnings,
+                                     'diagnostics': discovery_diagnostics},
             'timings': timings, 'agent_summary': summary,
             'model_metrics': state.get('model_metrics') or [],
             'tool_metrics': state.get('tool_metrics') or [],

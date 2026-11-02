@@ -80,7 +80,7 @@ def test_global_itinerary_proposal_is_grounded_to_five_days_and_verified_ids():
     assert proposed['days'] == 5
     assert proposed['selected_attraction_ids'] == 'node/42'
     result = suggest_activities(**proposed)
-    assert result['status'] == 'ok'
+    assert result['status'] == 'partial'
     assert len(result['itinerary']) == 5
 
 

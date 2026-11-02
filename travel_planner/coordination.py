@@ -189,7 +189,8 @@ def specialist_tool_args(tool, args, tool_context):
                         days=(request.return_date - request.departure_date).days + 1,
                         interests=request.interests, free_only=False,
                         candidate_data_json=json.dumps(candidates, separators=(',', ':')),
-                        selected_attraction_ids=','.join(selected), pace=request.travel_pace)
+                        selected_attraction_ids=','.join(selected), pace=request.travel_pace,
+                        start_date=request.departure_date.isoformat())
             starts = dict(tool_context.state.get('_tool_started_at') or {})
             starts[tool.name] = perf_counter()
             tool_context.state['_tool_started_at'] = starts
@@ -232,7 +233,10 @@ def save_specialist_tool_result(tool, args, tool_context, tool_response):
             tool_context.state['selected_hotel'] = None
             tool_context.state['hotel_nights'] = result['nights']
         return None
-    if result.get('status') != 'ok':
+    if result.get('status') != 'ok' and not (
+        request.global_mode and tool.name == 'suggest_activities'
+        and result.get('status') in {'partial', 'insufficient_data'}
+    ):
         tool_context.state['workflow_error'] = (
             f"{tool.name}: {result.get('message') or result.get('note') or result.get('errors') or 'no result'}")
         return None
@@ -291,6 +295,11 @@ def ensure_demo_disclaimer(callback_context, llm_response):
                 'admission prices are unknown, so the complete trip budget cannot be confirmed.')
         if note not in text:
             additions.append(note)
+        if facts.get('attraction_status') == 'partial':
+            partial_note = ('Some itinerary slots are general suggestions because verified attractions '
+                            'were unavailable; no venue or price is confirmed for those slots.')
+            if partial_note not in text:
+                additions.append(partial_note)
         if not additions:
             return None
         parts.append(types.Part(text='\n\n' + '\n'.join(additions)))

@@ -106,7 +106,8 @@ def search_hotels(destination: str, check_in: str, check_out: str, rooms: int = 
 
 def suggest_activities(destination: str, days: int, interests: str = "", free_only: bool = False,
                        avoid_popular_spots: bool = False, candidate_data_json: str = '',
-                       selected_attraction_ids: str = '', pace: str = 'Balanced') -> dict:
+                       selected_attraction_ids: str = '', pace: str = 'Balanced',
+                       start_date: str = '') -> dict:
     """Construct a simple day-wise itinerary using example activity ideas.
 
     Args:
@@ -118,6 +119,7 @@ def suggest_activities(destination: str, days: int, interests: str = "", free_on
         candidate_data_json: Verified OSM candidates supplied by the application for global trips.
         selected_attraction_ids: Comma-separated candidate IDs chosen in preference order.
         pace: Relaxed, Balanced, or Adventurous.
+        start_date: ISO departure date for a verified global itinerary.
     """
     try:
         q = ActivityQuery(destination=destination, days=days, interests=interests)
@@ -132,7 +134,8 @@ def suggest_activities(destination: str, days: int, interests: str = "", free_on
                 raise ValueError('Attraction candidates must be a list')
             return build_global_itinerary(candidates,
                                           [item.strip() for item in selected_attraction_ids.split(',')],
-                                          q.days, pace=pace)
+                                          q.days, pace=pace, interests=q.interests,
+                                          start_date=start_date, destination=q.destination)
         except (ValueError, TypeError) as exc:
             return {'status': 'invalid_request', 'message': f'Invalid attraction data: {exc}'}
     city = _city(q.destination)

@@ -1,0 +1,1278 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Multi-Agent Travel Planner",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Api Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations/search": {
+      "get": {
+        "summary": "Locations Search",
+        "operationId": "locations_search_api_locations_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResolvedLocation"
+                  },
+                  "title": "Response Locations Search Api Locations Search Get"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/plan": {
+      "post": {
+        "summary": "Plan Trip",
+        "operationId": "plan_trip_api_trips_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanTripRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{trip_id}/status": {
+      "get": {
+        "summary": "Trip Status",
+        "operationId": "trip_status_api_trips__trip_id__status_get",
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips/{trip_id}/result": {
+      "get": {
+        "summary": "Trip Result",
+        "operationId": "trip_result_api_trips__trip_id__result_get",
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripPlanResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivitySlot": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "afternoon",
+              "evening"
+            ],
+            "title": "Period"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "verified_place": {
+            "type": "boolean",
+            "title": "Verified Place"
+          },
+          "attraction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attraction Id"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "title",
+          "category",
+          "source",
+          "verified_place"
+        ],
+        "title": "ActivitySlot"
+      },
+      "ApiError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiError"
+      },
+      "Attraction": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "OPENSTREETMAP_OVERPASS"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "latitude",
+          "longitude"
+        ],
+        "title": "Attraction"
+      },
+      "AttractionDataStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "insufficient_data",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "verified_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Verified Count"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "quality_issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Quality Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "verified_count",
+          "sources"
+        ],
+        "title": "AttractionDataStatus"
+      },
+      "BudgetBreakdown": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CostItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "initial_total": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "optimized_total": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "known_subtotal": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "savings": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "remaining": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "budget_limit_usd": {
+            "type": "number",
+            "title": "Budget Limit Usd"
+          },
+          "comparison_status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Comparison Status"
+          },
+          "within_budget": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Within Budget"
+          },
+          "nights": {
+            "type": "integer",
+            "title": "Nights"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "initial_total",
+          "optimized_total",
+          "known_subtotal",
+          "savings",
+          "remaining",
+          "budget_limit_usd",
+          "comparison_status",
+          "within_budget",
+          "nights"
+        ],
+        "title": "BudgetBreakdown"
+      },
+      "CostAllowances": {
+        "properties": {
+          "flights_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flights Usd"
+          },
+          "hotel_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotel Usd"
+          }
+        },
+        "type": "object",
+        "title": "CostAllowances"
+      },
+      "CostItem": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "flights",
+              "hotel",
+              "food",
+              "ground_transport",
+              "activities"
+            ],
+            "title": "Category"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "label",
+          "price"
+        ],
+        "title": "CostItem"
+      },
+      "DailyPlan": {
+        "properties": {
+          "day": {
+            "type": "integer",
+            "title": "Day"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/ActivitySlot"
+            },
+            "type": "array",
+            "title": "Slots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "date",
+          "slots"
+        ],
+        "title": "DailyPlan"
+      },
+      "Diagnostics": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "execution_mode": {
+            "type": "string",
+            "title": "Execution Mode"
+          },
+          "trace": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Trace"
+          },
+          "agent_summary": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Agent Summary"
+          },
+          "timings": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Timings"
+          },
+          "model_metrics": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Model Metrics"
+          },
+          "tool_metrics": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Tool Metrics"
+          },
+          "geographic_discovery": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Geographic Discovery"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "execution_mode"
+        ],
+        "title": "Diagnostics"
+      },
+      "FlightOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "airline": {
+            "type": "string",
+            "title": "Airline"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination"
+          },
+          "stops": {
+            "type": "integer",
+            "title": "Stops"
+          },
+          "group_round_trip": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "bookable": {
+            "type": "boolean",
+            "title": "Bookable",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "airline",
+          "origin",
+          "destination",
+          "stops",
+          "group_round_trip"
+        ],
+        "title": "FlightOption"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HotelOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "nights": {
+            "type": "integer",
+            "title": "Nights"
+          },
+          "whole_stay": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "bookable": {
+            "type": "boolean",
+            "title": "Bookable",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "city",
+          "nights",
+          "whole_stay"
+        ],
+        "title": "HotelOption"
+      },
+      "JobStatus": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "items": {
+              "$ref": "#/components/schemas/ProgressEvent"
+            },
+            "type": "array",
+            "title": "Progress"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "status"
+        ],
+        "title": "JobStatus"
+      },
+      "OptimizationSummary": {
+        "properties": {
+          "triggered": {
+            "type": "boolean",
+            "title": "Triggered"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "triggered",
+          "explanation",
+          "outcome"
+        ],
+        "title": "OptimizationSummary"
+      },
+      "PlanTripRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/ResolvedLocation"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/ResolvedLocation"
+          },
+          "departure_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Departure Date"
+          },
+          "return_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Return Date"
+          },
+          "travelers": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Travelers"
+          },
+          "rooms": {
+            "type": "integer",
+            "maximum": 8.0,
+            "minimum": 1.0,
+            "title": "Rooms"
+          },
+          "total_budget_usd": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total Budget Usd"
+          },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Interests"
+          },
+          "travel_pace": {
+            "type": "string",
+            "enum": [
+              "Relaxed",
+              "Balanced",
+              "Adventurous"
+            ],
+            "title": "Travel Pace",
+            "default": "Balanced"
+          },
+          "additional_preferences": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Additional Preferences",
+            "default": ""
+          },
+          "optional_cost_allowances": {
+            "$ref": "#/components/schemas/CostAllowances"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "departure_date",
+          "return_date",
+          "travelers",
+          "rooms",
+          "total_budget_usd"
+        ],
+        "title": "PlanTripRequest"
+      },
+      "Price": {
+        "properties": {
+          "amount_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Usd"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "known",
+              "estimated",
+              "unknown"
+            ],
+            "title": "Kind"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "simulated",
+              "user_estimate",
+              "assumption",
+              "verified",
+              "unknown"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "source"
+        ],
+        "title": "Price"
+      },
+      "ProgressEvent": {
+        "properties": {
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "event"
+        ],
+        "title": "ProgressEvent"
+      },
+      "ResolvedLocation": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Name"
+          },
+          "country": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Country"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region",
+            "default": ""
+          },
+          "country_code": {
+            "type": "string",
+            "title": "Country Code",
+            "default": ""
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "OPEN_METEO_GEOCODING"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "country",
+          "latitude",
+          "longitude"
+        ],
+        "title": "ResolvedLocation"
+      },
+      "TripPlanResponse": {
+        "properties": {
+          "trip_summary": {
+            "$ref": "#/components/schemas/TripSummary"
+          },
+          "flight_options": {
+            "items": {
+              "$ref": "#/components/schemas/FlightOption"
+            },
+            "type": "array",
+            "title": "Flight Options"
+          },
+          "hotel_options": {
+            "items": {
+              "$ref": "#/components/schemas/HotelOption"
+            },
+            "type": "array",
+            "title": "Hotel Options"
+          },
+          "selected_flight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlightOption"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selected_hotel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HotelOption"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flight_allowance": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "hotel_allowance": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "daily_itinerary": {
+            "items": {
+              "$ref": "#/components/schemas/DailyPlan"
+            },
+            "type": "array",
+            "title": "Daily Itinerary"
+          },
+          "attractions": {
+            "items": {
+              "$ref": "#/components/schemas/Attraction"
+            },
+            "type": "array",
+            "title": "Attractions"
+          },
+          "attraction_data": {
+            "$ref": "#/components/schemas/AttractionDataStatus"
+          },
+          "budget_breakdown": {
+            "$ref": "#/components/schemas/BudgetBreakdown"
+          },
+          "optimization_summary": {
+            "$ref": "#/components/schemas/OptimizationSummary"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "data_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Data Sources"
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/Diagnostics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_summary",
+          "flight_options",
+          "hotel_options",
+          "selected_flight",
+          "selected_hotel",
+          "flight_allowance",
+          "hotel_allowance",
+          "daily_itinerary",
+          "attractions",
+          "attraction_data",
+          "budget_breakdown",
+          "optimization_summary",
+          "warnings",
+          "data_sources",
+          "diagnostics"
+        ],
+        "title": "TripPlanResponse"
+      },
+      "TripSummary": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/ResolvedLocation"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/ResolvedLocation"
+          },
+          "departure_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Departure Date"
+          },
+          "return_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Return Date"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "nights": {
+            "type": "integer",
+            "title": "Nights"
+          },
+          "travelers": {
+            "type": "integer",
+            "title": "Travelers"
+          },
+          "rooms": {
+            "type": "integer",
+            "title": "Rooms"
+          },
+          "total_budget_usd": {
+            "type": "number",
+            "title": "Total Budget Usd"
+          },
+          "travel_pace": {
+            "type": "string",
+            "title": "Travel Pace"
+          },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Interests"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "departure_date",
+          "return_date",
+          "days",
+          "nights",
+          "travelers",
+          "rooms",
+          "total_budget_usd",
+          "travel_pace",
+          "interests"
+        ],
+        "title": "TripSummary"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

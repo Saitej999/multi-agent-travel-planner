@@ -1,0 +1,105 @@
+{
+  "scenario": "Chicago to Rome, December 14–21, 2026",
+  "model": "gemini-3.1-flash-lite",
+  "days": 8,
+  "nights": 7,
+  "travelers": 2,
+  "attractions": [
+    {
+      "id": "wikipedia:1012601",
+      "name": "Amphitheatrum Castrense",
+      "source": "WIKIPEDIA_GEOSEARCH"
+    },
+    {
+      "id": "wikipedia:1078916",
+      "name": "Lateran Palace",
+      "source": "WIKIPEDIA_GEOSEARCH"
+    }
+  ],
+  "verified_itinerary_slots": 2,
+  "budget": {
+    "comparison_status": "partial",
+    "known_subtotal_usd": 880,
+    "items": [
+      {
+        "category": "flights",
+        "amount_usd": null,
+        "source": "unknown"
+      },
+      {
+        "category": "hotel",
+        "amount_usd": null,
+        "source": "unknown"
+      },
+      {
+        "category": "food",
+        "amount_usd": 720,
+        "source": "assumption"
+      },
+      {
+        "category": "ground_transport",
+        "amount_usd": 160,
+        "source": "assumption"
+      },
+      {
+        "category": "activities",
+        "amount_usd": null,
+        "source": "unknown"
+      }
+    ]
+  },
+  "warnings": [
+    "No verified flight or hotel offers are available for this route.",
+    "This is a partial estimate; admission and any missing allowances are unknown.",
+    "OpenStreetMap attraction search is temporarily unavailable.",
+    "Only a few verified attractions are available; remaining itinerary slots are general suggestions.",
+    "Some itinerary slots are general suggestions without verified venues."
+  ],
+  "trace": [
+    {
+      "agent": "flight_agent",
+      "event": "tool_call",
+      "tool": "search_flights"
+    },
+    {
+      "agent": "flight_agent",
+      "event": "tool_result",
+      "tool": "search_flights"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_call",
+      "tool": "search_hotels"
+    },
+    {
+      "agent": "hotel_agent",
+      "event": "tool_result",
+      "tool": "search_hotels"
+    },
+    {
+      "agent": "itinerary_agent",
+      "event": "tool_call",
+      "tool": "suggest_activities"
+    },
+    {
+      "agent": "itinerary_agent",
+      "event": "tool_result",
+      "tool": "suggest_activities"
+    },
+    {
+      "agent": "budget_agent",
+      "event": "tool_call",
+      "tool": "partial_budget"
+    },
+    {
+      "agent": "budget_agent",
+      "event": "tool_result",
+      "tool": "partial_budget"
+    },
+    {
+      "agent": "travel_coordinator",
+      "event": "final_response",
+      "tool": "—"
+    }
+  ]
+}

@@ -4,56 +4,33 @@ from google.adk.agents import LlmAgent, SequentialAgent
 from google.genai import types
 
 from travel_core.config import build_model
-from travel_core.tools import search_flights, search_hotels, suggest_activities
+from travel_core.tools import suggest_activities
 from travel_planner.budget_agent import BudgetAgent
 from travel_planner.coordination import (
-    prepare_request, record_coordinator_response, record_model_error,
+    record_coordinator_response, record_model_error,
     record_model_response, record_model_start, report_tool_error,
     save_specialist_tool_result, skip_on_error, specialist_tool_args,
 )
+from travel_planner.retrieval_agents import FlightSearchAgent, HotelSearchAgent
 
 MODEL = build_model()
-SPECIALIST_CONFIG = types.GenerateContentConfig(temperature=0, max_output_tokens=128)
+SPECIALIST_CONFIG = types.GenerateContentConfig(temperature=0, max_output_tokens=512)
 
-flight_agent = LlmAgent(
-    name='flight_agent', model=MODEL,
-    description='Searches synthetic round-trip flight options.',
-    instruction=('Call search_flights exactly once for {trip_request}. '
-                 'For global_mode, report unavailable live pricing; do not invent an offer.'),
-    tools=[search_flights], include_contents='none',
-    generate_content_config=SPECIALIST_CONFIG,
-    before_agent_callback=prepare_request,
-    before_tool_callback=specialist_tool_args,
-    after_tool_callback=save_specialist_tool_result,
-    on_tool_error_callback=report_tool_error,
-    before_model_callback=record_model_start,
-    after_model_callback=record_model_response,
-    on_model_error_callback=record_model_error,
-)
+flight_agent = FlightSearchAgent(name='flight_agent',
+    description='Runs the Python flight search deterministically and records its ADK events.')
 
-hotel_agent = LlmAgent(
-    name='hotel_agent', model=MODEL,
-    description='Searches synthetic lodging options.',
-    instruction=('Call search_hotels exactly once for {trip_request}. '
-                 'For global_mode, report unavailable live pricing; do not invent a hotel.'),
-    tools=[search_hotels], include_contents='none',
-    generate_content_config=SPECIALIST_CONFIG,
-    before_agent_callback=skip_on_error,
-    before_tool_callback=specialist_tool_args,
-    after_tool_callback=save_specialist_tool_result,
-    on_tool_error_callback=report_tool_error,
-    before_model_callback=record_model_start,
-    after_model_callback=record_model_response,
-    on_model_error_callback=record_model_error,
-)
+hotel_agent = HotelSearchAgent(name='hotel_agent',
+    description='Runs the Python hotel search deterministically and records its ADK events.')
 
 itinerary_agent = LlmAgent(
     name='itinerary_agent', model=MODEL,
-    description='Finds synthetic activity ideas for each trip day.',
+    description='Uses Gemini to select interests or verified places for the Python itinerary tool.',
     instruction=(
         'For {trip_request}, call suggest_activities once. For global_mode, select verified '
         'attraction IDs in preferred visit order from {attraction_choices}; choose for interests '
-        'and pace. Never invent IDs. For demo trips, choose interest tags from culture, food, '
+        'and pace. Prefer a varied set of notable places and group nearby places by day. '
+        'If there are no verified IDs, call the tool once with an empty selection. '
+        'Never invent IDs. For demo trips, choose interest tags from culture, food, '
         'outdoors, entertainment; set avoid_popular_spots only if requested.'
     ),
     tools=[suggest_activities], include_contents='none',
@@ -74,11 +51,13 @@ budget_agent = BudgetAgent(
 
 travel_coordinator = LlmAgent(
     name='travel_coordinator', model=MODEL,
-    description='Summarizes the verified synthetic trip results for the traveler.',
+    description='Uses Gemini to explain the verified travel plan.',
     instruction=(
         'Using only {coordinator_facts}, write a concise travel plan. '
         'For global mode, describe verified places by day, note user price allowances and missing '
         'flight, hotel, or admission prices, and never claim the full trip fits the budget. '
+        'If attraction_status is partial or insufficient_data, say that venue coverage is '
+        'incomplete and leave unscheduled periods open. '
         'For demo mode, report verified synthetic flight and hotel IDs and Python totals. '
         'List verified activities on their exact numbered day. '
         'Do not replace activity days with flight, arrival, or hotel events; arrival time is unknown. '

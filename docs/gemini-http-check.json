@@ -1,0 +1,69 @@
+{
+  "post_status": 202,
+  "job_status": "completed",
+  "result_status": 200,
+  "observed_progress": [
+    [
+      "flight_agent",
+      "tool_result",
+      "search_flights"
+    ],
+    [
+      "hotel_agent",
+      "tool_result",
+      "search_hotels"
+    ],
+    [
+      "itinerary_agent",
+      "tool_result",
+      "suggest_activities"
+    ],
+    [
+      "budget_agent",
+      "tool_result",
+      "estimate_budget"
+    ],
+    [
+      "budget_agent",
+      "tool_result",
+      "estimate_budget"
+    ],
+    [
+      "travel_coordinator",
+      "final_response",
+      null
+    ]
+  ],
+  "model": "gemini-3.1-flash-lite",
+  "trace_calls": [
+    [
+      "flight_agent",
+      "search_flights"
+    ],
+    [
+      "hotel_agent",
+      "search_hotels"
+    ],
+    [
+      "itinerary_agent",
+      "suggest_activities"
+    ],
+    [
+      "budget_agent",
+      "estimate_budget"
+    ],
+    [
+      "budget_agent",
+      "estimate_budget"
+    ]
+  ],
+  "final_response": true,
+  "days": 5,
+  "nights": 4,
+  "initial_usd": 2270,
+  "optimized_usd": 1990,
+  "savings_usd": 280,
+  "simulated_flight": "simulated",
+  "simulated_hotel": "simulated",
+  "error": null
+}
