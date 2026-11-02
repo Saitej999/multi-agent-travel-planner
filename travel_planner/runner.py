@@ -197,10 +197,10 @@ async def run_adk_trip(request: TripRequest, timeout_seconds: float = 180,
     for row in summary:
         if row['agent'] == 'flight_agent':
             row['selected_result'] = (state['selected_flight']['id'] if state.get('selected_flight')
-                                      else 'No live offer')
+                else 'No selected offer')
         elif row['agent'] == 'hotel_agent':
             row['selected_result'] = (state['selected_hotel']['id'] if state.get('selected_hotel')
-                                      else 'No live offer')
+                else 'No selected property')
         elif row['agent'] == 'itinerary_agent':
             row['selected_result'] = f"{len((state.get('itinerary_result') or {}).get('itinerary', []))} activity days"
         elif row['agent'] == 'budget_agent':
@@ -212,6 +212,8 @@ async def run_adk_trip(request: TripRequest, timeout_seconds: float = 180,
     return {'answer': answer, 'trace': trace, 'structured_plan': state['plan_facts'],
             'available_flights': (state.get('flight_search') or {}).get('options', []),
             'available_hotels': (state.get('hotel_search') or {}).get('options', []),
+            'flight_search': state.get('flight_search') or {},
+            'hotel_search': state.get('hotel_search') or {},
             'attractions': candidates,
             'attraction_discovery': {'status': discovery_status,
                                      'sources': discovery_sources,

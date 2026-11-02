@@ -53,6 +53,38 @@ def test_global_itinerary_rejects_unverified_venue_or_wrong_date():
     assert {'date_mismatch', 'invalid_attraction_provenance'} <= set(quality['issues'])
 
 
+def test_interests_change_ranking_and_related_places_are_not_separate_stops():
+    places = [Attraction(id=f'place:{i}', name=name, category=category,
+                         latitude=19.0 + i * .001, longitude=72.8,
+                         source_url=f'https://example.test/{i}').model_dump()
+              for i, (name, category) in enumerate([
+                  ('City Museum', 'museum'), ('River Park', 'park'),
+                  ('Crawford Market', 'market'), ('Crawford Market Fountain', 'fountain'),
+                  ('History Fort', 'fort'), ('Botanical Garden', 'garden')])]
+    culture = build_global_itinerary(places, [], 3, interests='culture,history',
+                                     start_date='2026-12-06', destination='Mumbai')
+    outdoors = build_global_itinerary(places, [], 3, interests='outdoors,nature',
+                                      start_date='2026-12-06', destination='Mumbai')
+    assert culture['itinerary'][0]['slots'][0]['title'] != outdoors['itinerary'][0]['slots'][0]['title']
+    names = [slot['title'] for day in culture['itinerary'] for slot in day['slots']]
+    assert not {'Crawford Market', 'Crawford Market Fountain'} <= set(names)
+
+
+def test_travel_times_constrain_first_and_last_days():
+    places = [Attraction(id=f'place:{i}', name=f'Museum {i}', category='museum',
+                         latitude=19 + i * .001, longitude=72.8).model_dump()
+              for i in range(5)]
+    result = build_global_itinerary(places, [], 3, start_date='2026-12-06',
+                                    destination='Mumbai', arrival_time='17:00',
+                                    departure_time='09:00')
+    assert result['itinerary'][0]['slots'] == result['itinerary'][-1]['slots'] == []
+    assert len(result['itinerary'][1]['slots']) == 2
+    assert validate_global_itinerary(result, candidates=places, destination='Mumbai',
+                                     departure_date=date(2026, 12, 6), days=3,
+                                     destination_latitude=19, destination_longitude=72.8,
+                                     arrival_time='17:00', departure_time='09:00')['status'] == 'ok'
+
+
 def test_global_budget_keeps_unknown_costs_unknown():
     result = partial_budget(days=5, nights=4, travelers=2, rooms=1,
                             food_per_person_per_day_usd=45,

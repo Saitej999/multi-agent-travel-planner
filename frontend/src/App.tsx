@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 import { ArrowRight, Compass, Globe2, MapPinned, PlaneTakeoff, ShieldCheck, Sparkles } from "lucide-react"
-import { startTrip, tripResult, tripStatus } from "@/lib/api"
+import { startTrip, tripResult, tripStatus, updateTripBudget } from "@/lib/api"
 import { TripForm } from "@/components/TripForm"
 import { TripResults } from "@/components/TripResults"
 import { Button } from "@/components/ui/button"
-import type { JobStatus, PlanTripRequest, TripPlanResponse } from "@/types/api"
+import type { BudgetEstimateRequest, JobStatus, PlanTripRequest, TripPlanResponse } from "@/types/api"
 
 function progressLabel(event: NonNullable<JobStatus["progress"]>[number]) {
   const names: Record<string, string> = {
@@ -16,7 +16,7 @@ function progressLabel(event: NonNullable<JobStatus["progress"]>[number]) {
   }
   const stage = names[event.agent] ?? event.agent.replaceAll("_", " ")
   if (event.event === "attractions_found") return `${event.count} named attractions found`
-  if (event.event === "attractions_unavailable") return "No verified attractions available; planning with general suggestions"
+  if (event.event === "attractions_unavailable") return "No verified attractions available; itinerary coverage is incomplete"
   if (event.event === "final_response") return `${stage} completed`
   return `${stage}: ${event.tool ?? event.event} completed`
 }
@@ -87,6 +87,11 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
+  async function reviseBudget(estimates: BudgetEstimateRequest) {
+    if (!tripId) throw new Error("The trip job is no longer available. Plan the trip again.")
+    setPlan(await updateTripBudget(tripId, estimates))
+  }
+
   return <div className="min-h-screen bg-[#f8faf9]">
     <header className="border-b border-slate-200/80 bg-white/90">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
@@ -101,7 +106,7 @@ export default function App() {
       </div>
     </header>
 
-    {plan ? <TripResults plan={plan} onBack={reset} onRetry={lastRequest ? () => void submit(lastRequest) : undefined} /> : <>
+    {plan ? <TripResults plan={plan} onBack={reset} onRetry={lastRequest ? () => void submit(lastRequest) : undefined} onBudgetUpdate={reviseBudget} /> : <>
       <main>
         <section className="hero-grid relative overflow-hidden">
           <div className="pointer-events-none absolute -right-28 -top-48 h-[570px] w-[570px] rounded-full border-[70px] border-white/10" />

@@ -1,8 +1,4 @@
-"""Mock travel provider tools for Google ADK agents.
-
-These functions NEVER check live availability or issue bookings.
-All catalog prices are synthetic test fixtures.
-"""
+"""Deterministic travel retrieval tools; no bookings or live fare claims."""
 from datetime import date
 import json
 
@@ -10,6 +6,7 @@ from pydantic import ValidationError
 
 from .catalog import ACTIVITIES, AIRPORT_ALIASES, CITY_BY_AIRPORT, FLIGHTS, HOTELS
 from .schemas import ActivityQuery, BudgetQuery, FlightQuery, HotelQuery
+from .geo import GeographicDataError, ResolvedLocation
 
 
 def _airport(value: str) -> str | None:
@@ -27,7 +24,9 @@ def _error(exc: ValidationError) -> dict:
 
 def search_flights(origin: str, destination: str, departure_date: str, return_date: str,
                    travelers: int = 1, global_mode: bool = False,
-                   flight_allowance_usd: float | None = None) -> dict:
+                   flight_allowance_usd: float | None = None,
+                   origin_location: dict | None = None,
+                   destination_location: dict | None = None) -> dict:
     """Search synthetic round-trip airfare examples (not live flights).
 
     Args:
@@ -45,13 +44,36 @@ def search_flights(origin: str, destination: str, departure_date: str, return_da
     except ValidationError as exc:
         return _error(exc)
     if global_mode:
-        return {'status': 'unavailable', 'source': 'NO_LIVE_PROVIDER', 'bookable': False,
+        from .duffel import search_test_offers
+        if origin_location and destination_location:
+            try:
+                found = search_test_offers(ResolvedLocation.model_validate(origin_location),
+                                           ResolvedLocation.model_validate(destination_location),
+                                           q.departure_date.isoformat(), q.return_date.isoformat(), q.travelers)
+            except ValidationError:
+                found = {'status': 'unavailable', 'reason': 'invalid_location', 'options': []}
+        else:
+            found = {'status': 'unavailable', 'reason': 'missing_location', 'options': []}
+        reason_text = {
+            'missing_credentials': 'Duffel developer test token is not configured.',
+            'test_token_required': 'Duffel token must be a developer test token.',
+            'airport_unresolved': 'Duffel could not resolve airports for the selected cities.',
+            'authentication_error': 'Duffel rejected the developer test token.',
+            'timeout': 'Duffel test search timed out.',
+            'provider_unavailable': 'Duffel test search is temporarily unavailable.',
+            'rate_limited': 'Duffel test search is rate limited.',
+            'no_test_offers': 'Duffel returned no usable USD round-trip test offers for this route.',
+        }.get(found.get('reason'), 'No usable Duffel test flight offer is available.')
+        return {'status': found['status'], 'reason': found.get('reason'),
+                'source': 'DUFFEL_TEST' if found['options'] else 'NO_FLIGHT_OFFER',
+                'live_availability_checked': False, 'bookable': False,
                 'origin': q.origin, 'destination': q.destination,
                 'departure_date': q.departure_date.isoformat(),
                 'return_date': q.return_date.isoformat(), 'travelers': q.travelers,
-                'options': [], 'flight_allowance_usd': flight_allowance_usd,
+                'options': found['options'], 'flight_allowance_usd': flight_allowance_usd,
                 'price_status': 'user_estimate' if flight_allowance_usd is not None else 'unknown',
-                'note': 'No live flight provider is connected; no flight offer or airline is claimed.'}
+                'note': ('Duffel developer test offers are simulated, non-bookable here, and not live airline fares.'
+                         if found['options'] else reason_text)}
     src, dst = _airport(q.origin), _airport(q.destination)
     if src is None or dst is None:
         return {"status": "unsupported_route", "message": "Demo routes begin in Chicago (ORD) and end in NYC, SFO, or Tokyo; live flight APIs are not connected."}
@@ -68,7 +90,8 @@ def search_flights(origin: str, destination: str, departure_date: str, return_da
 
 
 def search_hotels(destination: str, check_in: str, check_out: str, rooms: int = 1,
-                  global_mode: bool = False, hotel_allowance_usd: float | None = None) -> dict:
+                  global_mode: bool = False, hotel_allowance_usd: float | None = None,
+                  destination_location: dict | None = None) -> dict:
     """Search synthetic hotel examples; no current room inventory is checked.
 
     Args:
@@ -84,13 +107,31 @@ def search_hotels(destination: str, check_in: str, check_out: str, rooms: int = 
     except ValidationError as exc:
         return _error(exc)
     if global_mode:
+        from .hotels import discover_hotels
         nights = (q.check_out - q.check_in).days
-        return {'status': 'unavailable', 'source': 'NO_LIVE_PROVIDER', 'bookable': False,
+        reason = None
+        try:
+            properties = (discover_hotels(ResolvedLocation.model_validate(destination_location))
+                          if destination_location else [])
+        except GeographicDataError:
+            properties, reason = [], 'provider_unavailable'
+        except ValidationError:
+            properties, reason = [], 'invalid_location'
+        if not properties and reason is None:
+            reason = 'no_source_backed_properties' if destination_location else 'missing_location'
+        options = [dict(item.model_dump(), total_room_cost_usd=None) for item in properties]
+        return {'status': 'ok' if options else 'unavailable', 'reason': reason,
+                'source': 'OPENSTREETMAP_OVERPASS' if options else 'NO_HOTEL_PROPERTIES',
+                'live_availability_checked': False, 'bookable': False,
                 'destination': q.destination, 'check_in': q.check_in.isoformat(),
                 'check_out': q.check_out.isoformat(), 'nights': nights, 'rooms': q.rooms,
-                'options': [], 'hotel_allowance_usd': hotel_allowance_usd,
+                'options': options, 'hotel_allowance_usd': hotel_allowance_usd,
                 'price_status': 'user_estimate' if hotel_allowance_usd is not None else 'unknown',
-                'note': 'No live hotel provider is connected; no property or room price is claimed.'}
+                'note': ('Named properties come from OpenStreetMap; room prices, availability, and ratings are unknown.'
+                         if options else
+                         'Both public OpenStreetMap hotel searches were unavailable.'
+                         if reason == 'provider_unavailable' else
+                         'No named OpenStreetMap hotel properties were returned for this city.')}
     city = _city(q.destination)
     if not city:
         return {"status": "unsupported_destination", "message": "Demo hotels only cover New York City, San Francisco, and Tokyo."}
@@ -107,7 +148,7 @@ def search_hotels(destination: str, check_in: str, check_out: str, rooms: int = 
 def suggest_activities(destination: str, days: int, interests: str = "", free_only: bool = False,
                        avoid_popular_spots: bool = False, candidate_data_json: str = '',
                        selected_attraction_ids: str = '', pace: str = 'Balanced',
-                       start_date: str = '') -> dict:
+                       start_date: str = '', arrival_time: str = '', departure_time: str = '') -> dict:
     """Construct a simple day-wise itinerary using example activity ideas.
 
     Args:
@@ -120,6 +161,8 @@ def suggest_activities(destination: str, days: int, interests: str = "", free_on
         selected_attraction_ids: Comma-separated candidate IDs chosen in preference order.
         pace: Relaxed, Balanced, or Adventurous.
         start_date: ISO departure date for a verified global itinerary.
+        arrival_time: Optional local destination arrival time, HH:MM.
+        departure_time: Optional local destination departure time, HH:MM.
     """
     try:
         q = ActivityQuery(destination=destination, days=days, interests=interests)
@@ -135,7 +178,8 @@ def suggest_activities(destination: str, days: int, interests: str = "", free_on
             return build_global_itinerary(candidates,
                                           [item.strip() for item in selected_attraction_ids.split(',')],
                                           q.days, pace=pace, interests=q.interests,
-                                          start_date=start_date, destination=q.destination)
+                                          start_date=start_date, destination=q.destination,
+                                          arrival_time=arrival_time, departure_time=departure_time)
         except (ValueError, TypeError) as exc:
             return {'status': 'invalid_request', 'message': f'Invalid attraction data: {exc}'}
     city = _city(q.destination)

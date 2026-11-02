@@ -1,6 +1,6 @@
 """Stable public request and response contracts for the local web application."""
 
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -10,7 +10,7 @@ from .schemas import TripRequest
 
 
 PriceKind = Literal['known', 'estimated', 'unknown']
-DataSource = Literal['simulated', 'user_estimate', 'assumption', 'verified', 'unknown']
+DataSource = Literal['simulated', 'user_estimate', 'assumption', 'mixed_estimate', 'verified', 'unknown']
 
 
 class Price(BaseModel):
@@ -32,6 +32,19 @@ class CostAllowances(BaseModel):
     hotel_usd: float | None = Field(default=None, ge=0)
 
 
+class BudgetEstimateRequest(BaseModel):
+    flights_usd: float | None = Field(default=None, ge=0, le=1_000_000)
+    hotel_nightly_rate_usd: float | None = Field(default=None, ge=0, le=1_000_000)
+    hotel_whole_stay_usd: float | None = Field(default=None, ge=0, le=1_000_000)
+    admission_usd: float | None = Field(default=None, ge=0, le=1_000_000)
+
+    @model_validator(mode='after')
+    def one_hotel_estimate(self):
+        if self.hotel_nightly_rate_usd is not None and self.hotel_whole_stay_usd is not None:
+            raise ValueError('Choose a nightly hotel rate or whole-stay total, not both')
+        return self
+
+
 class PlanTripRequest(BaseModel):
     origin: ResolvedLocation
     destination: ResolvedLocation
@@ -42,6 +55,8 @@ class PlanTripRequest(BaseModel):
     total_budget_usd: float = Field(gt=0, le=1_000_000)
     interests: list[str] = Field(default_factory=list, max_length=12)
     travel_pace: Literal['Relaxed', 'Balanced', 'Adventurous'] = 'Balanced'
+    arrival_time: time | None = None
+    departure_time: time | None = None
     additional_preferences: str = Field(default='', max_length=300)
     optional_cost_allowances: CostAllowances = Field(default_factory=CostAllowances)
 
@@ -69,6 +84,7 @@ class PlanTripRequest(BaseModel):
             budget_limit_usd=self.total_budget_usd,
             interests=','.join(self.interests),
             preferences=self.additional_preferences, travel_pace=self.travel_pace,
+            arrival_time=self.arrival_time, departure_time=self.departure_time,
             flight_allowance_usd=self.optional_cost_allowances.flights_usd,
             hotel_allowance_usd=self.optional_cost_allowances.hotel_usd,
         )
@@ -100,6 +116,8 @@ class TripSummary(BaseModel):
     rooms: int
     total_budget_usd: float
     travel_pace: str
+    arrival_time: time | None = None
+    departure_time: time | None = None
     interests: list[str]
 
 
@@ -110,6 +128,9 @@ class FlightOption(BaseModel):
     destination: str
     stops: int
     group_round_trip: Price
+    source: Literal['SYNTHETIC_DEMO', 'DUFFEL_TEST'] = 'SYNTHETIC_DEMO'
+    departure_date: date | None = None
+    return_date: date | None = None
     bookable: bool = False
 
 
@@ -119,6 +140,11 @@ class HotelOption(BaseModel):
     city: str
     nights: int
     whole_stay: Price
+    category: str = ''
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    source: Literal['SYNTHETIC_DEMO', 'OPENSTREETMAP_OVERPASS'] = 'SYNTHETIC_DEMO'
+    source_url: str = ''
     bookable: bool = False
 
 
@@ -140,6 +166,7 @@ class DailyPlan(BaseModel):
     day: int
     date: date
     slots: list[ActivitySlot]
+    note: str = ''
 
 
 class CostItem(BaseModel):
@@ -153,10 +180,12 @@ class BudgetBreakdown(BaseModel):
     initial_total: Price
     optimized_total: Price
     known_subtotal: Price
+    estimate_based_total: Price = Field(default_factory=lambda: Price(amount_usd=None, kind='unknown', source='unknown'))
+    estimate_difference_usd: float | None = None
     savings: Price
     remaining: Price
     budget_limit_usd: float
-    comparison_status: Literal['complete', 'partial']
+    comparison_status: Literal['complete', 'partial', 'estimate_complete']
     within_budget: bool | None
     nights: int
 
@@ -195,6 +224,8 @@ class TripPlanResponse(BaseModel):
     trip_summary: TripSummary
     flight_options: list[FlightOption]
     hotel_options: list[HotelOption]
+    flight_provider_note: str = ''
+    hotel_provider_note: str = ''
     selected_flight: FlightOption | None
     selected_hotel: HotelOption | None
     flight_allowance: Price
@@ -235,11 +266,16 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
     flights = [FlightOption(
         id=item['id'], airline=item['airline'], origin=item['origin'],
         destination=item['destination'], stops=item['stops'],
-        group_round_trip=_price(item['total_round_trip_usd'], 'simulated'))
+        group_round_trip=_price(item['total_round_trip_usd'], 'simulated'),
+        source=item.get('source', 'SYNTHETIC_DEMO'),
+        departure_date=item.get('departure_date'), return_date=item.get('return_date'))
         for item in result.get('available_flights') or []]
     hotels = [HotelOption(
         id=item['id'], name=item['name'], city=item['city'], nights=nights,
-        whole_stay=_price(item['total_room_cost_usd'], 'simulated'))
+        whole_stay=_price(item.get('total_room_cost_usd'), 'simulated'),
+        category=item.get('category', ''), latitude=item.get('latitude'),
+        longitude=item.get('longitude'), source=item.get('source', 'SYNTHETIC_DEMO'),
+        source_url=item.get('source_url', ''))
         for item in result.get('available_hotels') or []]
     selected_flight = next((item for item in flights if item.id == (facts.get('flight') or {}).get('id')), None)
     selected_hotel = next((item for item in hotels if item.id == (facts.get('hotel') or {}).get('id')), None)
@@ -267,7 +303,7 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
         itinerary.append(DailyPlan(
             day=day['day'],
             date=request.departure_date + timedelta(days=day['day'] - 1),
-            slots=slots))
+            slots=slots, note=day.get('note') or ''))
 
     breakdown = budget['breakdown']
     mapped = [
@@ -290,8 +326,9 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
     known_subtotal = budget.get('known_subtotal_usd', final_total)
     warnings = (['Flight and hotel offers and prices are simulated, not live or bookable.']
                 if not global_mode else
-                ['No verified flight or hotel offers are available for this route.',
-                 'This is a partial estimate; admission and any missing allowances are unknown.',
+                [result.get('flight_search', {}).get('note') or 'No Duffel test flight offers were returned.',
+                 result.get('hotel_search', {}).get('note') or 'No source-backed hotel properties were returned.',
+                 'Sandbox fares are excluded from the budget; user estimates, planning allowances, and unknown admission are labeled separately.',
                  *(result.get('attraction_discovery') or {}).get('warnings', []),
                  *(['The itinerary has unscheduled periods because verified places are limited.']
                    if facts.get('attraction_status') == 'partial' else [])])
@@ -302,8 +339,11 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
             departure_date=request.departure_date, return_date=request.return_date,
             days=days, nights=nights, travelers=request.travelers, rooms=request.rooms,
             total_budget_usd=request.total_budget_usd, travel_pace=request.travel_pace,
+            arrival_time=request.arrival_time, departure_time=request.departure_time,
             interests=request.interests),
         flight_options=flights, hotel_options=hotels,
+        flight_provider_note=(result.get('flight_search') or {}).get('note', ''),
+        hotel_provider_note=(result.get('hotel_search') or {}).get('note', ''),
         selected_flight=selected_flight, selected_hotel=selected_hotel,
         flight_allowance=_price(request.optional_cost_allowances.flights_usd, 'user_estimate'),
         hotel_allowance=_price(request.optional_cost_allowances.hotel_usd, 'user_estimate'),
@@ -319,6 +359,8 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
             items=items, initial_total=_price(initial_total, 'simulated'),
             optimized_total=_price(final_total, 'simulated' if not global_mode else 'unknown'),
             known_subtotal=_price(known_subtotal, 'simulated' if not global_mode else 'assumption'),
+            estimate_based_total=_price(budget.get('estimate_based_total_usd'), 'mixed_estimate'),
+            estimate_difference_usd=budget.get('estimate_difference_usd'),
             savings=_price(savings, 'simulated'), remaining=_price(budget.get('remaining_usd'), 'simulated'),
             budget_limit_usd=request.total_budget_usd,
             comparison_status='partial' if global_mode else 'complete',
@@ -328,8 +370,10 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
             explanation=facts['replanning'].get('explanation', ''),
             outcome=facts['replanning'].get('outcome', 'unknown')),
         warnings=warnings,
-        data_sources=['SYNTHETIC_DEMO'] if not global_mode else [
-            'OPEN_METEO_GEOCODING', *attraction_sources],
+        data_sources=['SYNTHETIC_DEMO'] if not global_mode else list(dict.fromkeys([
+            'OPEN_METEO_GEOCODING', *attraction_sources,
+            *(['DUFFEL_TEST'] if flights else []),
+            *(['OPENSTREETMAP_OVERPASS'] if hotels else [])])),
         diagnostics=Diagnostics(
             model=result['model'], execution_mode=result['execution_mode'],
             trace=result.get('trace') or [], agent_summary=result.get('agent_summary') or [],
@@ -337,3 +381,47 @@ def plan_response(request: PlanTripRequest, result: dict) -> TripPlanResponse:
             tool_metrics=result.get('tool_metrics') or [],
             geographic_discovery=(result.get('attraction_discovery') or {}).get('diagnostics') or []),
     )
+
+
+def recalculate_trip_estimates(plan: TripPlanResponse,
+                               estimates: BudgetEstimateRequest) -> TripPlanResponse:
+    """Revise a global trip's estimate in Python without rerunning the agents."""
+    if plan.attraction_data.status == 'not_applicable':
+        raise ValueError('The synthetic demo already has priced flight and hotel alternatives')
+    from .global_planner import partial_budget
+
+    summary = plan.trip_summary
+    current = {item.category: item for item in plan.budget_breakdown.items}
+    hotel = (round(estimates.hotel_nightly_rate_usd * summary.rooms * summary.nights, 2)
+             if estimates.hotel_nightly_rate_usd is not None else
+             estimates.hotel_whole_stay_usd)
+    calculated = partial_budget(
+        days=summary.days, nights=summary.nights,
+        travelers=summary.travelers, rooms=summary.rooms,
+        food_per_person_per_day_usd=current['food'].price.amount_usd / summary.days / summary.travelers,
+        transport_per_day_usd=current['ground_transport'].price.amount_usd / summary.days,
+        budget_limit_usd=summary.total_budget_usd,
+        flight_allowance_usd=estimates.flights_usd,
+        hotel_allowance_usd=hotel,
+        admission_allowance_usd=estimates.admission_usd)
+    amounts = {'flights': estimates.flights_usd, 'hotel': hotel,
+               'activities': estimates.admission_usd}
+    items = [item.model_copy(update={
+        'price': _price(amounts[item.category], 'user_estimate')})
+        if item.category in amounts else item for item in plan.budget_breakdown.items]
+    revised = plan.model_dump(mode='python')
+    revised['flight_allowance'] = _price(estimates.flights_usd, 'user_estimate')
+    revised['hotel_allowance'] = _price(hotel, 'user_estimate')
+    revised['budget_breakdown'] = plan.budget_breakdown.model_copy(update={
+        'items': items,
+        'known_subtotal': _price(calculated['known_subtotal_usd'], 'mixed_estimate'),
+        'estimate_based_total': _price(calculated['estimate_based_total_usd'], 'mixed_estimate'),
+        'estimate_difference_usd': calculated['estimate_difference_usd'],
+        'remaining': _price(max(0, calculated['remaining_usd'])
+                            if calculated['remaining_usd'] is not None else None,
+                            'mixed_estimate'),
+        'comparison_status': ('estimate_complete' if calculated['status'] == 'estimate_complete'
+                              else 'partial'),
+        'within_budget': calculated['within_budget'],
+    })
+    return TripPlanResponse.model_validate(revised)

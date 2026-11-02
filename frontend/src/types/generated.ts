@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trips/{trip_id}/budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Trip Budget */
+        post: operations["update_trip_budget_api_trips__trip_id__budget_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -184,6 +201,9 @@ export interface components {
             initial_total: components["schemas"]["Price"];
             optimized_total: components["schemas"]["Price"];
             known_subtotal: components["schemas"]["Price"];
+            estimate_based_total?: components["schemas"]["Price"];
+            /** Estimate Difference Usd */
+            estimate_difference_usd?: number | null;
             savings: components["schemas"]["Price"];
             remaining: components["schemas"]["Price"];
             /** Budget Limit Usd */
@@ -192,11 +212,22 @@ export interface components {
              * Comparison Status
              * @enum {string}
              */
-            comparison_status: "complete" | "partial";
+            comparison_status: "complete" | "partial" | "estimate_complete";
             /** Within Budget */
             within_budget: boolean | null;
             /** Nights */
             nights: number;
+        };
+        /** BudgetEstimateRequest */
+        BudgetEstimateRequest: {
+            /** Flights Usd */
+            flights_usd?: number | null;
+            /** Hotel Nightly Rate Usd */
+            hotel_nightly_rate_usd?: number | null;
+            /** Hotel Whole Stay Usd */
+            hotel_whole_stay_usd?: number | null;
+            /** Admission Usd */
+            admission_usd?: number | null;
         };
         /** CostAllowances */
         CostAllowances: {
@@ -227,6 +258,11 @@ export interface components {
             date: string;
             /** Slots */
             slots: components["schemas"]["ActivitySlot"][];
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** Diagnostics */
         Diagnostics: {
@@ -273,6 +309,16 @@ export interface components {
             stops: number;
             group_round_trip: components["schemas"]["Price"];
             /**
+             * Source
+             * @default SYNTHETIC_DEMO
+             * @enum {string}
+             */
+            source: "SYNTHETIC_DEMO" | "DUFFEL_TEST";
+            /** Departure Date */
+            departure_date?: string | null;
+            /** Return Date */
+            return_date?: string | null;
+            /**
              * Bookable
              * @default false
              */
@@ -294,6 +340,26 @@ export interface components {
             /** Nights */
             nights: number;
             whole_stay: components["schemas"]["Price"];
+            /**
+             * Category
+             * @default
+             */
+            category: string;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /**
+             * Source
+             * @default SYNTHETIC_DEMO
+             * @enum {string}
+             */
+            source: "SYNTHETIC_DEMO" | "OPENSTREETMAP_OVERPASS";
+            /**
+             * Source Url
+             * @default
+             */
+            source_url: string;
             /**
              * Bookable
              * @default false
@@ -350,6 +416,10 @@ export interface components {
              * @enum {string}
              */
             travel_pace: "Relaxed" | "Balanced" | "Adventurous";
+            /** Arrival Time */
+            arrival_time?: string | null;
+            /** Departure Time */
+            departure_time?: string | null;
             /**
              * Additional Preferences
              * @default
@@ -370,7 +440,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "simulated" | "user_estimate" | "assumption" | "verified" | "unknown";
+            source: "simulated" | "user_estimate" | "assumption" | "mixed_estimate" | "verified" | "unknown";
         };
         /** ProgressEvent */
         ProgressEvent: {
@@ -423,6 +493,16 @@ export interface components {
             flight_options: components["schemas"]["FlightOption"][];
             /** Hotel Options */
             hotel_options: components["schemas"]["HotelOption"][];
+            /**
+             * Flight Provider Note
+             * @default
+             */
+            flight_provider_note: string;
+            /**
+             * Hotel Provider Note
+             * @default
+             */
+            hotel_provider_note: string;
             selected_flight: components["schemas"]["FlightOption"] | null;
             selected_hotel: components["schemas"]["HotelOption"] | null;
             flight_allowance: components["schemas"]["Price"];
@@ -466,6 +546,10 @@ export interface components {
             total_budget_usd: number;
             /** Travel Pace */
             travel_pace: string;
+            /** Arrival Time */
+            arrival_time?: string | null;
+            /** Departure Time */
+            departure_time?: string | null;
             /** Interests */
             interests: string[];
         };
@@ -662,6 +746,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_trip_budget_api_trips__trip_id__budget_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPlanResponse"];
                 };
             };
             /** @description Not Found */

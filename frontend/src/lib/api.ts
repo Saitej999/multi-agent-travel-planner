@@ -1,4 +1,4 @@
-import type { ApiError, JobStatus, PlanTripRequest, ResolvedLocation, TripPlanResponse } from "@/types/api"
+import type { ApiError, BudgetEstimateRequest, JobStatus, PlanTripRequest, ResolvedLocation, TripPlanResponse } from "@/types/api"
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? ""
 
@@ -42,5 +42,14 @@ export async function tripStatus(id: string) {
 
 export async function tripResult(id: string) {
   const response = await fetch(`${BASE}/api/trips/${encodeURIComponent(id)}/result`)
+  return responseJson<TripPlanResponse>(response)
+}
+
+export async function updateTripBudget(id: string, estimates: BudgetEstimateRequest) {
+  const response = await fetch(`${BASE}/api/trips/${encodeURIComponent(id)}/budget`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(estimates),
+  })
   return responseJson<TripPlanResponse>(response)
 }

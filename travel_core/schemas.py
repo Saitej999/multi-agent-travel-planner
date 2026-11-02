@@ -1,6 +1,6 @@
 """Input validation schemas. Pydantic ensures tool arguments are coherent."""
 
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -67,6 +67,8 @@ class TripRequest(FlightQuery):
     interests: str = 'culture,food'
     preferences: str = Field(default='', max_length=300)
     travel_pace: str = 'Balanced'
+    arrival_time: time | None = None
+    departure_time: time | None = None
     global_mode: bool = False
     origin_location: ResolvedLocation | None = None
     destination_location: ResolvedLocation | None = None

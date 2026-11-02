@@ -2,7 +2,7 @@
 
 IMPORTANT: These steps imitate the *roles* of specialist agents for teaching
 purposes. They are NOT calls to LLM agents. Actual Google ADK AgentTool
-orchestration lives in travel_planner/agent.py (requires Ollama).
+orchestration lives in travel_planner/agent.py (requires a configured Gemini key).
 """
 
 from itertools import product

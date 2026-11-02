@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from travel_core.api_schemas import PlanTripRequest, TripPlanResponse, plan_response
+from travel_core.api_schemas import (BudgetEstimateRequest, PlanTripRequest,
+                                     TripPlanResponse, plan_response,
+                                     recalculate_trip_estimates)
 from travel_core.config import gemini_key_available, model_name
 from travel_core.geo import GeographicDataError, ResolvedLocation, search_cities
 from travel_planner.runner import WorkflowRunError, run_adk_trip
@@ -173,4 +175,22 @@ def trip_result(trip_id: str):
     if job.result is None:
         return JSONResponse(status_code=202,
                             content=job.public_status().model_dump(mode='json'))
+    return job.result
+
+
+@app.post('/api/trips/{trip_id}/budget', response_model=TripPlanResponse,
+          responses={404: {'model': ApiError}, 409: {'model': ApiError}})
+def update_trip_budget(trip_id: str, estimates: BudgetEstimateRequest):
+    job = _jobs.get(trip_id)
+    if job is None:
+        return JSONResponse(status_code=404, content=ApiError(
+            code='trip_not_found', message='This trip job was not found.').model_dump())
+    if job.result is None:
+        return JSONResponse(status_code=409, content=ApiError(
+            code='trip_not_ready', message='The trip plan is not ready for budget updates.').model_dump())
+    try:
+        job.result = recalculate_trip_estimates(job.result, estimates)
+    except ValueError as exc:
+        return JSONResponse(status_code=409, content=ApiError(
+            code='estimate_not_applicable', message=str(exc)).model_dump())
     return job.result

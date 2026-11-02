@@ -245,6 +245,75 @@
           }
         }
       }
+    },
+    "/api/trips/{trip_id}/budget": {
+      "post": {
+        "summary": "Update Trip Budget",
+        "operationId": "update_trip_budget_api_trips__trip_id__budget_post",
+        "parameters": [
+          {
+            "name": "trip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trip Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetEstimateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripPlanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -488,6 +557,20 @@
           "known_subtotal": {
             "$ref": "#/components/schemas/Price"
           },
+          "estimate_based_total": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "estimate_difference_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimate Difference Usd"
+          },
           "savings": {
             "$ref": "#/components/schemas/Price"
           },
@@ -502,7 +585,8 @@
             "type": "string",
             "enum": [
               "complete",
-              "partial"
+              "partial",
+              "estimate_complete"
             ],
             "title": "Comparison Status"
           },
@@ -536,6 +620,64 @@
           "nights"
         ],
         "title": "BudgetBreakdown"
+      },
+      "BudgetEstimateRequest": {
+        "properties": {
+          "flights_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flights Usd"
+          },
+          "hotel_nightly_rate_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotel Nightly Rate Usd"
+          },
+          "hotel_whole_stay_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hotel Whole Stay Usd"
+          },
+          "admission_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Usd"
+          }
+        },
+        "type": "object",
+        "title": "BudgetEstimateRequest"
       },
       "CostAllowances": {
         "properties": {
@@ -613,6 +755,11 @@
             },
             "type": "array",
             "title": "Slots"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
           }
         },
         "type": "object",
@@ -713,6 +860,39 @@
           "group_round_trip": {
             "$ref": "#/components/schemas/Price"
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "SYNTHETIC_DEMO",
+              "DUFFEL_TEST"
+            ],
+            "title": "Source",
+            "default": "SYNTHETIC_DEMO"
+          },
+          "departure_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Departure Date"
+          },
+          "return_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Date"
+          },
           "bookable": {
             "type": "boolean",
             "title": "Bookable",
@@ -763,6 +943,51 @@
           },
           "whole_stay": {
             "$ref": "#/components/schemas/Price"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": ""
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "SYNTHETIC_DEMO",
+              "OPENSTREETMAP_OVERPASS"
+            ],
+            "title": "Source",
+            "default": "SYNTHETIC_DEMO"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url",
+            "default": ""
           },
           "bookable": {
             "type": "boolean",
@@ -898,6 +1123,30 @@
             "title": "Travel Pace",
             "default": "Balanced"
           },
+          "arrival_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival Time"
+          },
+          "departure_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Departure Time"
+          },
           "additional_preferences": {
             "type": "string",
             "maxLength": 300,
@@ -949,6 +1198,7 @@
               "simulated",
               "user_estimate",
               "assumption",
+              "mixed_estimate",
               "verified",
               "unknown"
             ],
@@ -1080,6 +1330,16 @@
             "type": "array",
             "title": "Hotel Options"
           },
+          "flight_provider_note": {
+            "type": "string",
+            "title": "Flight Provider Note",
+            "default": ""
+          },
+          "hotel_provider_note": {
+            "type": "string",
+            "title": "Hotel Provider Note",
+            "default": ""
+          },
           "selected_flight": {
             "anyOf": [
               {
@@ -1208,6 +1468,30 @@
           "travel_pace": {
             "type": "string",
             "title": "Travel Pace"
+          },
+          "arrival_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival Time"
+          },
+          "departure_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Departure Time"
           },
           "interests": {
             "items": {

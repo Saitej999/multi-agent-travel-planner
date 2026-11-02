@@ -170,14 +170,17 @@ def specialist_tool_args(tool, args, tool_context):
                     departure_date=request.departure_date.isoformat(),
                     return_date=request.return_date.isoformat(), travelers=request.travelers)
         if request.global_mode:
-            args.update(global_mode=True, flight_allowance_usd=request.flight_allowance_usd)
+            args.update(global_mode=True, flight_allowance_usd=request.flight_allowance_usd,
+                        origin_location=request.origin_location.model_dump() if request.origin_location else None,
+                        destination_location=request.destination_location.model_dump() if request.destination_location else None)
     elif tool.name == 'search_hotels':
         args.clear()
         args.update(destination=request.destination,
                     check_in=request.departure_date.isoformat(),
                     check_out=request.return_date.isoformat(), rooms=request.rooms)
         if request.global_mode:
-            args.update(global_mode=True, hotel_allowance_usd=request.hotel_allowance_usd)
+            args.update(global_mode=True, hotel_allowance_usd=request.hotel_allowance_usd,
+                        destination_location=request.destination_location.model_dump() if request.destination_location else None)
     elif tool.name == 'suggest_activities':
         if request.global_mode:
             candidates = tool_context.state.get('attraction_candidates') or []
@@ -190,7 +193,9 @@ def specialist_tool_args(tool, args, tool_context):
                         interests=request.interests, free_only=False,
                         candidate_data_json=json.dumps(candidates, separators=(',', ':')),
                         selected_attraction_ids=','.join(selected), pace=request.travel_pace,
-                        start_date=request.departure_date.isoformat())
+                        start_date=request.departure_date.isoformat(),
+                        arrival_time=request.arrival_time.isoformat(timespec='minutes') if request.arrival_time else '',
+                        departure_time=request.departure_time.isoformat(timespec='minutes') if request.departure_time else '')
             starts = dict(tool_context.state.get('_tool_started_at') or {})
             starts[tool.name] = perf_counter()
             tool_context.state['_tool_started_at'] = starts
@@ -223,7 +228,7 @@ def save_specialist_tool_result(tool, args, tool_context, tool_response):
     _record_tool_timing(tool.name, tool_context, result.get('status', 'invalid_response'), args)
     request = TripRequest.model_validate(tool_context.state['trip_request'])
     if request.global_mode and tool.name in {'search_flights', 'search_hotels'}:
-        if result.get('status') != 'unavailable':
+        if result.get('status') not in {'unavailable', 'ok'}:
             tool_context.state['workflow_error'] = f"{tool.name}: {result.get('message', 'provider failed')}"
         elif tool.name == 'search_flights':
             tool_context.state['flight_search'] = result
@@ -291,8 +296,9 @@ def ensure_demo_disclaimer(callback_context, llm_response):
     additions = []
     facts = getattr(callback_context, 'state', {}).get('plan_facts', {})
     if (facts.get('request') or {}).get('global_mode'):
-        note = ('No live flight or hotel offers were checked. User travel allowances are estimates; '
-                'admission prices are unknown, so the complete trip budget cannot be confirmed.')
+        note = ('Flight results, if present, are Duffel developer test offers, not live fares. '
+                'Hotel names, if present, are OpenStreetMap places without verified room prices or availability. '
+                'User travel allowances are estimates; admission prices are unknown, so the complete trip budget cannot be confirmed.')
         if note not in text:
             additions.append(note)
         if facts.get('attraction_status') == 'partial':

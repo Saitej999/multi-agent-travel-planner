@@ -100,6 +100,8 @@ export function TripForm({ onSubmit, busy }: {
   const [destination, setDestination] = useState<ResolvedLocation | null>(null)
   const [departure, setDeparture] = useState(dateAfter(35))
   const [returnDate, setReturnDate] = useState(dateAfter(39))
+  const [arrivalTime, setArrivalTime] = useState("")
+  const [departureTime, setDepartureTime] = useState("")
   const [travelers, setTravelers] = useState(2)
   const [rooms, setRooms] = useState(1)
   const [budget, setBudget] = useState(2000)
@@ -131,6 +133,7 @@ export function TripForm({ onSubmit, busy }: {
       travelers, rooms, total_budget_usd: budget,
       interests: interests.map((interest) => interest.toLowerCase()),
       travel_pace: pace, additional_preferences: preferences,
+      arrival_time: arrivalTime || null, departure_time: departureTime || null,
       optional_cost_allowances: {
         flights_usd: flightAllowance ? Number(flightAllowance) : null,
         hotel_usd: hotelAllowance ? Number(hotelAllowance) : null,
@@ -171,6 +174,15 @@ export function TripForm({ onSubmit, busy }: {
             <label className="form-label" htmlFor="rooms">Rooms</label>
             <input id="rooms" type="number" className="field" min={1} max={8} value={rooms} onChange={(e) => setRooms(Number(e.target.value))} required />
           </div>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div><label className="form-label" htmlFor="arrival-time">Arrival time in destination (optional)</label>
+            <input id="arrival-time" type="time" className="field" value={arrivalTime} onChange={(event) => setArrivalTime(event.target.value)} />
+          </div>
+          <div><label className="form-label" htmlFor="departure-time">Departure time from destination (optional)</label>
+            <input id="departure-time" type="time" className="field" value={departureTime} onChange={(event) => setDepartureTime(event.target.value)} />
+          </div>
+          <p className="text-xs text-slate-500 sm:col-span-2">Use local destination times. Leave blank if your travel schedule is unknown; first and final day plans will be provisional.</p>
         </div>
         <div className="grid gap-5 md:grid-cols-[1fr_1fr]">
           <div>

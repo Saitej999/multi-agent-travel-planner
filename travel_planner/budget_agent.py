@@ -222,7 +222,8 @@ class BudgetAgent(BaseAgent):
             if state.get('workflow_error'):
                 raise ValueError(state['workflow_error'])
             request = TripRequest.model_validate(state['trip_request'])
-            if state['flight_search']['status'] != 'unavailable' or state['hotel_search']['status'] != 'unavailable':
+            if (state['flight_search']['status'] not in {'unavailable', 'ok'} or
+                    state['hotel_search']['status'] not in {'unavailable', 'ok'}):
                 raise ValueError('Global flight and hotel availability state is missing')
             itinerary = state['itinerary_result']
             days = (request.return_date - request.departure_date).days + 1
@@ -233,7 +234,9 @@ class BudgetAgent(BaseAgent):
                 itinerary, candidates=state.get('attraction_candidates') or [],
                 destination=request.destination, departure_date=request.departure_date,
                 days=days, destination_latitude=request.destination_location.latitude,
-                destination_longitude=request.destination_location.longitude)
+                destination_longitude=request.destination_location.longitude,
+                arrival_time=request.arrival_time.isoformat(timespec='minutes') if request.arrival_time else '',
+                departure_time=request.departure_time.isoformat(timespec='minutes') if request.departure_time else '')
             if quality['status'] == 'invalid_result':
                 raise ValueError('Attraction itinerary failed validation: ' + ', '.join(quality['issues']))
             kwargs = {'days': days, 'nights': days - 1, 'travelers': request.travelers,
@@ -269,7 +272,8 @@ class BudgetAgent(BaseAgent):
                 'source': itinerary['source']}
         brief = {'mode': 'global', 'trip': {key: state['trip_request'][key] for key in (
             'origin', 'destination', 'departure_date', 'return_date', 'travelers',
-            'rooms', 'budget_limit_usd', 'interests', 'preferences', 'travel_pace')},
+            'rooms', 'budget_limit_usd', 'interests', 'preferences', 'travel_pace',
+            'arrival_time', 'departure_time')},
                  'days': [{'day': item['day'], 'places': [slot['title'] for slot in item['slots']
                            if slot['verified_place']]} for item in itinerary['itinerary']],
                  'budget': budget, 'flight_pricing': state['flight_search']['price_status'],

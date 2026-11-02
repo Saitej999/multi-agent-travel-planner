@@ -40,23 +40,25 @@ const plan: TripPlanResponse = {
   },
   flight_options: [{
     id: "DEMO-F001", airline: "Example Air", origin: "ORD", destination: "JFK",
-    stops: 0, group_round_trip: simulated(660), bookable: false,
+    stops: 0, group_round_trip: simulated(660), source: "SYNTHETIC_DEMO", bookable: false,
   }],
   hotel_options: [{
     id: "DEMO-H001", name: "Example Hotel", city: "New York City",
-    nights: 4, whole_stay: simulated(640), bookable: false,
+    nights: 4, whole_stay: simulated(640), category: "budget", source: "SYNTHETIC_DEMO", source_url: "", bookable: false,
   }],
+  flight_provider_note: "",
+  hotel_provider_note: "",
   selected_flight: {
     id: "DEMO-F001", airline: "Example Air", origin: "ORD", destination: "JFK",
-    stops: 0, group_round_trip: simulated(660), bookable: false,
+    stops: 0, group_round_trip: simulated(660), source: "SYNTHETIC_DEMO", bookable: false,
   },
   selected_hotel: {
     id: "DEMO-H001", name: "Example Hotel", city: "New York City",
-    nights: 4, whole_stay: simulated(640), bookable: false,
+    nights: 4, whole_stay: simulated(640), category: "budget", source: "SYNTHETIC_DEMO", source_url: "", bookable: false,
   },
   flight_allowance: unknown, hotel_allowance: unknown,
   daily_itinerary: Array.from({ length: 5 }, (_, index) => ({
-    day: index + 1, date: `2026-12-${15 + index}`,
+    day: index + 1, date: `2026-12-${15 + index}`, note: "",
     slots: [
       { period: "morning", title: "Museum visit", category: "culture",
         description: "Illustrative activity", source: "SYNTHETIC_DEMO", verified_place: false },
@@ -125,6 +127,8 @@ describe("travel planning journey", () => {
     fireEvent.change(screen.getByLabelText("Return"), { target: { value: "2026-12-19" } })
     fireEvent.change(screen.getByLabelText("Total trip budget · USD"), { target: { value: "2000" } })
     fireEvent.change(screen.getByLabelText("Anything else we should know?"), { target: { value: "Museums and local food" } })
+    fireEvent.change(screen.getByLabelText("Arrival time in destination (optional)"), { target: { value: "17:00" } })
+    fireEvent.change(screen.getByLabelText("Departure time from destination (optional)"), { target: { value: "09:00" } })
     const form = screen.getByRole("button", { name: /Plan My Trip/i }).closest("form")!
     expect(Array.from(form.elements).filter((element) => element instanceof HTMLInputElement && !element.checkValidity()).map((element) => (element as HTMLInputElement).id)).toEqual([])
     fireEvent.click(screen.getByRole("button", { name: /Plan My Trip/i }))
@@ -139,6 +143,8 @@ describe("travel planning journey", () => {
     expect(request.total_budget_usd).toBe(2000)
     expect(request.interests).toEqual(["culture", "food"])
     expect(request.additional_preferences).toBe("Museums and local food")
+    expect(request.arrival_time).toBe("17:00")
+    expect(request.departure_time).toBe("09:00")
   })
 
   it("renders structured budget data and hides diagnostics by default", () => {
@@ -175,10 +181,53 @@ describe("travel planning journey", () => {
     expect(screen.getByText("Wikipedia place")).toBeInTheDocument()
     expect(screen.getByText(/Attraction data: 1 verified place\(s\) · Partial coverage/)).toBeInTheDocument()
     expect(screen.getByText("No verified flight offer available")).toBeInTheDocument()
-    expect(screen.getByText("Known subtotal")).toBeInTheDocument()
+    expect(screen.getByText("Partial budget estimate")).toBeInTheDocument()
     expect(screen.getByText(/Limited attraction coverage/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: /Retry attraction discovery and planning/i }))
     expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it("labels Duffel test offers and shows source-backed hotels without inventing prices", () => {
+    const global = structuredClone(plan)
+    global.attraction_data.status = "partial"
+    global.selected_flight = null
+    global.selected_hotel = null
+    global.flight_options = [{
+      id: "off_test_1", airline: "Test Airways", origin: "ORD", destination: "BOM",
+      departure_date: "2026-12-06", return_date: "2026-12-10", stops: 1,
+      group_round_trip: simulated(1200), source: "DUFFEL_TEST", bookable: false,
+    }]
+    global.hotel_options = [{
+      id: "osm:node/1", name: "Named Mumbai Hotel", city: "Mumbai", nights: 4,
+      whole_stay: unknown, category: "hotel", latitude: 19.07, longitude: 72.88,
+      source: "OPENSTREETMAP_OVERPASS", source_url: "https://www.openstreetmap.org/node/1",
+      bookable: false,
+    }]
+    render(<TripResults plan={global} onBack={() => {}} />)
+    expect(screen.getByText(/Duffel developer test offer · Simulated and non-bookable/)).toBeInTheDocument()
+    expect(screen.getByText("Operated by Test Airways")).toBeInTheDocument()
+    expect(screen.getByText("Named Mumbai Hotel")).toBeInTheDocument()
+    expect(screen.getByText(/Price, rating, and availability unverified/)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "OpenStreetMap source" })).toHaveAttribute(
+      "href", "https://www.openstreetmap.org/node/1")
+  })
+
+  it("submits user estimates without planning again", async () => {
+    const global = structuredClone(plan)
+    global.attraction_data.status = "partial"
+    global.selected_flight = null
+    global.selected_hotel = null
+    const update = vi.fn().mockResolvedValue(undefined)
+    render(<TripResults plan={global} onBack={() => {}} onBudgetUpdate={update} />)
+    fireEvent.change(screen.getByLabelText("Round-trip flights for your group · USD"), { target: { value: "900" } })
+    fireEvent.change(screen.getByLabelText("Hotel estimate type"), { target: { value: "nightly" } })
+    fireEvent.change(screen.getByLabelText("Rate per room per night · USD"), { target: { value: "120" } })
+    fireEvent.click(screen.getByRole("button", { name: "Update budget without AI" }))
+    await waitFor(() => expect(update).toHaveBeenCalledWith({
+      flights_usd: 900, hotel_nightly_rate_usd: 120,
+      hotel_whole_stay_usd: null, admission_usd: null,
+    }))
+    expect(startTrip).not.toHaveBeenCalled()
   })
 
   it("connects form, job status, and completed result", async () => {

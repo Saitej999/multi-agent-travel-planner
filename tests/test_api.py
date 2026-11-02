@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 
 from backend import main
-from travel_core.api_schemas import PlanTripRequest
+from travel_core.api_schemas import PlanTripRequest, plan_response
 from travel_core.geo import ResolvedLocation
 from travel_core.tools import search_flights, search_hotels
 from travel_planner.runner import WorkflowRunError
@@ -163,3 +163,45 @@ def test_invalid_dates_rejected_before_any_job(monkeypatch):
     response = asyncio.run(run())
     assert response.status_code == 422
     assert not main._jobs
+
+
+def test_budget_endpoint_recalculates_without_adk(monkeypatch):
+    from travel_core.global_planner import build_global_itinerary, partial_budget
+    rome = ResolvedLocation(id=3, name='Rome', region='Lazio', country='Italy',
+                            country_code='IT', latitude=41.9, longitude=12.5)
+    request = web_request().model_copy(update={'destination': rome, 'rooms': 2})
+    itinerary = build_global_itinerary([], [], 5, start_date='2026-11-15',
+                                       destination=rome.label)
+    budget = partial_budget(days=5, nights=4, travelers=2, rooms=2,
+                            food_per_person_per_day_usd=45,
+                            transport_per_day_usd=20, budget_limit_usd=2000,
+                            flight_allowance_usd=None, hotel_allowance_usd=None)
+    result = {'structured_plan': {'request': {'global_mode': True},
+                                  'itinerary': itinerary['itinerary'], 'budget': budget,
+                                  'attraction_status': 'insufficient_data',
+                                  'replanning': {'triggered': False, 'outcome': 'none'}},
+              'model': 'test-model', 'execution_mode': 'TEST'}
+    main._jobs.clear()
+    main._jobs['budget-test'] = main.LocalJob(
+        trip_id='budget-test', status='completed', result=plan_response(request, result))
+    async def unexpected_adk(*args, **kwargs):
+        raise AssertionError('Budget update must not call ADK')
+    monkeypatch.setattr(main, 'run_adk_trip', unexpected_adk)
+
+    async def run():
+        async with await client() as api:
+            revised = await api.post('/api/trips/budget-test/budget', json={
+                'flights_usd': 900, 'hotel_nightly_rate_usd': 120})
+            stored = await api.get('/api/trips/budget-test/result')
+            invalid = await api.post('/api/trips/budget-test/budget', json={
+                'hotel_nightly_rate_usd': 120, 'hotel_whole_stay_usd': 960})
+            return revised, stored, invalid
+
+    revised, stored, invalid = asyncio.run(run())
+    assert revised.status_code == stored.status_code == 200
+    assert revised.json()['budget_breakdown']['estimate_based_total']['amount_usd'] == 2410
+    assert revised.json()['budget_breakdown']['estimate_difference_usd'] == -410
+    assert revised.json()['budget_breakdown']['within_budget'] is None
+    assert revised.json()['budget_breakdown']['items'][1]['price']['source'] == 'user_estimate'
+    assert stored.json()['budget_breakdown'] == revised.json()['budget_breakdown']
+    assert invalid.status_code == 422

@@ -140,7 +140,7 @@ def test_http_job_invokes_real_adk_runner_and_returns_validated_trip(monkeypatch
 
 
 def test_global_adk_uses_model_selected_verified_places_and_partial_budget(monkeypatch):
-    from travel_core import geo
+    from travel_core import duffel, geo, hotels
     from travel_planner.agent import itinerary_agent, travel_coordinator
 
     chicago = _city(1, 'Chicago', 'Illinois', 'United States', 'US', 41.88, -87.63)
@@ -151,6 +151,17 @@ def test_global_adk_uses_model_selected_verified_places_and_partial_budget(monke
         latitude=41.9 + index * 0.001, longitude=12.5)
         for index in range(12)]
     monkeypatch.setattr(geo, 'discover_attractions', lambda location: attractions)
+    monkeypatch.setattr(hotels, 'discover_hotels', lambda location: [hotels.HotelProperty(
+        id='osm:node/900', name='Named Rome Hotel', city='Rome', category='hotel',
+        latitude=41.901, longitude=12.501,
+        source_url='https://www.openstreetmap.org/node/900')])
+    monkeypatch.setattr(duffel, 'search_test_offers', lambda *args: {
+        'status': 'ok', 'reason': None, 'options': [{
+            'id': 'off_test_1', 'origin': 'ORD', 'destination': 'FCO',
+            'airline': 'Test Airways', 'stops': 1,
+            'total_round_trip_usd': 1200.0, 'round_trip_usd_per_person': 600.0,
+            'departure_date': '2026-12-15', 'return_date': '2026-12-20',
+            'source': 'DUFFEL_TEST'}]})
     request = TripRequest(
         origin=chicago.label, destination=rome.label,
         origin_location=chicago, destination_location=rome, global_mode=True,
@@ -180,10 +191,10 @@ def test_global_adk_uses_model_selected_verified_places_and_partial_budget(monke
         assert result['structured_plan']['budget']['nights'] == 5
         assert result['trace'][-1]['event'] == 'final_response'
     first_museum = museum['structured_plan']['itinerary'][0]['slots'][0]
-    first_outdoor = outdoors['structured_plan']['itinerary'][0]['slots'][0]
     assert first_museum['category'] == 'museum'
-    assert first_outdoor['category'] == 'park'
-    assert first_museum['title'] != first_outdoor['title']
+    assert any(
+        slot['attraction_id'] == 'osm:node/8' for day in outdoors['structured_plan']['itinerary']
+        for slot in day['slots'])
     response = __import__('travel_core.api_schemas', fromlist=['plan_response']).plan_response(
         PlanTripRequest(origin=chicago, destination=rome,
                         departure_date='2026-12-15', return_date='2026-12-20',
@@ -191,10 +202,15 @@ def test_global_adk_uses_model_selected_verified_places_and_partial_budget(monke
                         interests=['history', 'culture', 'food']), museum)
     assert response.attraction_data.status == 'complete'
     assert response.daily_itinerary[0].slots[0].attraction_id == 'osm:node/1'
+    assert response.flight_options[0].source == 'DUFFEL_TEST'
+    assert response.flight_options[0].group_round_trip.amount_usd == 1200
+    assert response.hotel_options[0].name == 'Named Rome Hotel'
+    assert response.hotel_options[0].whole_stay.amount_usd is None
+    assert response.budget_breakdown.within_budget is None
 
 
 def test_global_adk_completes_with_no_attraction_provider(monkeypatch):
-    from travel_core import geo
+    from travel_core import geo, hotels
     from travel_planner.agent import itinerary_agent, travel_coordinator
 
     chicago = _city(1, 'Chicago', 'Illinois', 'United States', 'US', 41.88, -87.63)
@@ -203,6 +219,7 @@ def test_global_adk_completes_with_no_attraction_provider(monkeypatch):
         raise geo.GeographicDataError('Location service is unavailable: TimeoutError')
     monkeypatch.setattr(geo, 'discover_attractions', unavailable)
     monkeypatch.setattr(geo, 'discover_wikipedia_attractions', unavailable)
+    monkeypatch.setattr(hotels, 'discover_hotels', unavailable)
     monkeypatch.setattr(itinerary_agent, 'model', ItineraryModel(model='fake-itinerary'))
     monkeypatch.setattr(travel_coordinator, 'model', CoordinatorModel(model='fake-coordinator'))
     request = TripRequest(

@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from travel_core.api_schemas import PlanTripRequest, Price, plan_response
+from travel_core.api_schemas import (BudgetEstimateRequest, PlanTripRequest, Price,
+                                     plan_response, recalculate_trip_estimates)
 from travel_core.geo import ResolvedLocation
 from travel_core.tools import search_flights, search_hotels
 
@@ -68,3 +69,36 @@ def test_saved_adk_result_maps_to_structured_budget_without_markdown():
     assert plan.budget_breakdown.comparison_status == 'complete'
     assert plan.flight_options[0].group_round_trip.source == 'simulated'
     assert 'answer' not in plan.model_dump()
+
+
+def test_global_estimates_use_python_and_keep_admission_unknown():
+    from travel_core.global_planner import build_global_itinerary, partial_budget
+    request = web_request(ROME).model_copy(update={'rooms': 2})
+    itinerary = build_global_itinerary([], [], 5, start_date='2026-11-15',
+                                       destination=ROME.label)
+    budget = partial_budget(days=5, nights=4, travelers=2, rooms=2,
+                            food_per_person_per_day_usd=45,
+                            transport_per_day_usd=20, budget_limit_usd=2000,
+                            flight_allowance_usd=None, hotel_allowance_usd=None)
+    result = {'structured_plan': {'request': {'global_mode': True},
+                                  'itinerary': itinerary['itinerary'], 'budget': budget,
+                                  'attraction_status': 'insufficient_data',
+                                  'replanning': {'triggered': False, 'outcome': 'none'}},
+              'model': 'test-model', 'execution_mode': 'TEST'}
+    plan = plan_response(request, result)
+    revised = recalculate_trip_estimates(plan, BudgetEstimateRequest(
+        flights_usd=900, hotel_nightly_rate_usd=120))
+    assert revised.budget_breakdown.items[1].price.amount_usd == 960
+    assert revised.budget_breakdown.known_subtotal.amount_usd == 2410
+    assert revised.budget_breakdown.estimate_based_total.amount_usd == 2410
+    assert revised.budget_breakdown.estimate_difference_usd == -410
+    assert revised.budget_breakdown.within_budget is None
+    assert revised.budget_breakdown.comparison_status == 'partial'
+    assert revised.budget_breakdown.items[0].price.source == 'user_estimate'
+    complete = recalculate_trip_estimates(plan, BudgetEstimateRequest(
+        flights_usd=900, hotel_whole_stay_usd=960, admission_usd=100))
+    assert complete.budget_breakdown.estimate_based_total.amount_usd == 2510
+    assert complete.budget_breakdown.comparison_status == 'estimate_complete'
+    assert complete.budget_breakdown.within_budget is False
+    with pytest.raises(ValidationError):
+        BudgetEstimateRequest(hotel_nightly_rate_usd=120, hotel_whole_stay_usd=960)
